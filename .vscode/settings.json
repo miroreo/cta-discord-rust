@@ -1,0 +1,5 @@
+{
+  "editor.indentSize": "tabSize",
+  "editor.tabSize": 2,
+  "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix"
+}
