@@ -1,23 +1,31 @@
-use crate::cta;
+use crate::{cta, CTAShared};
 use std::env;
+
+use chrono::TimeZone;
+use chrono_tz::America::Chicago;
 use serenity::builder::CreateCommand;
 use serenity::model::application::{ResolvedOption, ResolvedValue};
-use serenity::all::{CreateCommandOption, CreateInteractionResponseMessage};
+use serenity::all::{Context, CreateCommandOption, CreateInteractionResponseMessage};
 
-pub async fn run<'a>(options: &'a[ResolvedOption<'a>]) -> CreateInteractionResponseMessage {
-  if let Some(ResolvedOption {
+pub async fn run<'a>(ctx: &Context, options: &'a[ResolvedOption<'a>]) -> CreateInteractionResponseMessage {
+  let data = ctx.data.read().await;
+  let data = data.get::<CTAShared>().expect("no shared data");
+  let tt = &data.traintracker;
+  if let Some(ResolvedOption {  
     value: ResolvedValue::Integer(run), ..
   }) = options.first()
   {
-    let tt = cta::traintracker::TrainTracker::new(env::var("CTA_RAIL_API_KEY").expect("CTA_RAIL_API_KEY not found.").as_str());
-    let next_stations = tt.train_next_stations(run.clone() as i32).await;
+    let next_stations = tt.follow_train(run.clone() as i32).await;
     match next_stations {
       Ok(val) => {
         let mut embed = serenity::all::CreateEmbed::new();
+        let mut desc: String = String::new();
         for sta in &val {
-          embed = embed.field(sta.staNm.clone(), format!("<t:{}:R>", chrono::DateTime::<chrono::Local>::from_naive_utc_and_offset(sta.arrT.checked_sub_offset(chrono::FixedOffset::west_opt(6*3600).unwrap()).expect("Time is gone I guess"), chrono::FixedOffset::west_opt(6*3600).unwrap()).timestamp()), true);
+          desc.push_str(format!("{}: <t:{}:R>\n", sta.staNm.clone(), chrono::DateTime::timestamp(&Chicago.from_local_datetime(&sta.arrT).unwrap())).as_str())
+          // embed = embed.field(, format!("<t:{}:R>", , true);
+          // .chrono::TimeZoneDateTime::<chrono::Local>::from_naive_utc_and_offset(sta.arrT.checked_sub_offset(chrono::FixedOffset::west_opt(6*3600).unwrap()).expect("Time is gone I guess"), chrono::FixedOffset::west_opt(6*3600).unwrap()).timestamp()), true);
         }
-        return CreateInteractionResponseMessage::new().content(format!("Found {} upcoming stations for Train #{}", val.len(), run)).embed(embed);
+        return CreateInteractionResponseMessage::new().content(format!("Found {} upcoming stations for Train #{}", val.len(), run)).embed(embed.description(desc));
       },
       Err(err) => {
         return CreateInteractionResponseMessage::new().content(format!("Could not find the specified train: {err:?}" ));

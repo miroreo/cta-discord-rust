@@ -23,42 +23,42 @@ struct PositionTT {
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
-struct TTRoute {
+pub struct TTRoute {
   #[serde(rename="@name")]
-  name: LRouteCode,
-  train: Vec<TTPosition>,
+  pub name: LRouteCode,
+  pub train: Vec<TTPosition>,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
-struct TTPosition {
-
+pub struct TTPosition {
   #[serde_as(as = "DisplayFromStr")]
-  rn: i32,
+  pub rn: i32,
+  pub rt: Option<LRouteCode>,
   #[serde_as(as = "DisplayFromStr")]
-  destSt: i32,
-  destNm: String,
+  pub destSt: i32,
+  pub destNm: String,
   #[serde_as(as = "DisplayFromStr")]
-  trDr: i8,
+  pub trDr: i8,
   #[serde_as(as = "DisplayFromStr")]
-  nextStaId: i32,
+  pub nextStaId: i32,
   #[serde_as(as = "DisplayFromStr")]
-  nextStpId: i32,
-  nextStaNm: String,
+  pub nextStpId: i32,
+  pub nextStaNm: String,
   #[serde_as(as = "DisplayFromStr")]
-  prdt: NaiveDateTime,
+  pub prdt: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  arrT: NaiveDateTime,
+  pub arrT: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  isApp: i8,
+  pub isApp: i8,
   #[serde_as(as = "DisplayFromStr")]
-  isDly: i8,
+  pub isDly: i8,
   #[serde_as(as = "DisplayFromStr")]
-  lat: f32,
+  pub lat: f32,
   #[serde_as(as = "DisplayFromStr")]
-  lon: f32,
+  pub lon: f32,
   #[serde_as(as = "DisplayFromStr")]
-  heading: i32
+  pub heading: i32
 }
 
 #[serde_as]
@@ -103,8 +103,8 @@ struct TTArrival {
   heading: i32
 }
 
-#[derive(Deserialize, Debug)]
-enum LRouteCode {
+#[derive(Serialize, Deserialize, Debug)]
+pub enum LRouteCode {
   Red,
   P,
   Y,
@@ -115,8 +115,8 @@ enum LRouteCode {
   Brn
 }
 
-#[derive(Deserialize, Debug)]
-enum LRouteName {
+#[derive(Serialize, Deserialize, Debug)]
+pub enum LRouteName {
   #[serde(rename="Red Line")]
   Red,
   #[serde(rename="Purple Line")]
@@ -223,26 +223,70 @@ pub enum TrainTrackerError {
   RequestError(#[from] reqwest::Error),
   #[error("Failed to parse JSON data returned from TrainTracker API")]
   ParseError(#[from] serde_json::Error),
-  // #[error("TrainTracker threw an error.")]
+}
+
+#[derive(Serialize, Debug)]
+pub struct ArrivalsParameters {
+  #[serde(flatten)]
+  id: MapOrStopID,
+  max: Option<i32>,
+  rt: Option<String>,
+}
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+enum MapOrStopID {
+  MapID { mapid: i32 },
+  StopID { stpid: i32 }
 }
 pub struct TrainTracker {
   token: String,
 }
 impl TrainTracker {
-  const base_url: &str = "https://lapi.transitchicago.com/api/1.0/";
+  const BASE_URL: &str = "https://lapi.transitchicago.com/api/1.0/";
 
   pub fn new(token: &str) -> Self {
     Self {
       token: token.to_string()
     }
   }
-  pub async fn train_next_stations(&self, train_number: i32) -> Result<Vec<TTFollowEta>, TrainTrackerError> {
-    let resp_text = get(format!("{}ttfollow.aspx?runnumber={train_number}&key={}&outputType=JSON", Self::base_url, self.token))
+  pub async fn follow_train(&self, train_number: i32) -> Result<Vec<TTFollowEta>, TrainTrackerError> {
+    let resp_text = get(format!("{}ttfollow.aspx?runnumber={train_number}&key={}&outputType=JSON", Self::BASE_URL, self.token))
       .await?
       .text()
       .await?;
-    println!("{}", resp_text);
     // let topLevel: TopLevelResponse<FollowTrainTT> = ;
     Ok(serde_json::from_str::<TopLevelResponse<FollowTrainTT>>(&resp_text)?.ctatt.eta)
+  }
+  pub async fn arrivals(&self, options: ArrivalsParameters) -> Result<Vec<TTArrival>, TrainTrackerError> {
+    let mut params: String = match options.id {
+      MapOrStopID::MapID { mapid } => format!("mapid={}", mapid),
+      MapOrStopID::StopID { stpid } => format!("stpid={}", stpid),
+    };
+    if options.max.is_some() {
+      params = format!("{}&max={}", params, options.max.unwrap());
+    }
+    if options.rt.is_some() {
+      params = format!("{}&rt={}", params, options.rt.unwrap().as_str());
+    }
+    let resp_text = get(format!("{}ttarrivals.aspx?{}&key={}", Self::BASE_URL, params, self.token))
+      .await?
+      .text()
+      .await?;
+    Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.eta)
+  }
+
+  pub async fn positions(&self, rt: Vec<LRouteCode>) -> Result<Vec<TTRoute>, TrainTrackerError> {
+    let routes: String = rt.iter()
+      .map(|r| serde_json::ser::to_string(r).ok()).flatten()
+      .fold("".to_string(), |prev, r| 
+        format!("{}{},", prev, r));
+    let resp_text = get(format!("{}ttpositions.aspx?rt={routes}&key={}&outputType=JSON", Self::BASE_URL, self.token))
+      .await?
+      .text()
+      .await?;
+    // let topLevel: TopLevelResponse<FollowTrainTT> = ;
+    Ok(serde_json::from_str::<TopLevelResponse<PositionTT>>(&resp_text)?
+      .ctatt
+      .route)
   }
 }

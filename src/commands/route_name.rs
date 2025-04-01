@@ -1,14 +1,18 @@
-use crate::cta;
+use crate::{cta, CTAShared};
 use serenity::builder::CreateCommand;
 use serenity::model::application::{ResolvedOption, ResolvedValue};
-use serenity::all::{CreateCommandOption, CreateInteractionResponseMessage};
+use serenity::all::{Context, CreateCommandOption, CreateInteractionResponseMessage};
 
-pub async fn run<'a>(options: &'a[ResolvedOption<'a>]) -> CreateInteractionResponseMessage {
+pub async fn run<'a>(ctx: &Context, options: &'a[ResolvedOption<'a>]) -> CreateInteractionResponseMessage {
+  let data = ctx.data.read().await;
+  let data = data.get::<CTAShared>().expect("no shared data");
+  
+  let gtfs = &data.gtfs;
   if let Some(ResolvedOption {
     value: ResolvedValue::String(id), ..
   }) = options.first()
   {
-    let route_name = cta::get_route_name(&id).await;
+    let route_name = gtfs.get_route_name(&id);
     if let Some(route_name) = route_name {
       return CreateInteractionResponseMessage::new().content(route_name.to_string())
     }

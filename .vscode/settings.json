@@ -1,5 +1,6 @@
 {
   "editor.indentSize": "tabSize",
   "editor.tabSize": 2,
-  "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix"
+  "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
+  "rust-analyzer.server.path": "rust-analyzer"
 }

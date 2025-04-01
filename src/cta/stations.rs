@@ -4,7 +4,6 @@ use serde_with::*;
 use std::sync::OnceLock;
 use reqwest::*;
 static stations_url: &str = "https://data.cityofchicago.org/resource/8pix-ypme.json";
-static stops: OnceLock<Vec<Stop>> = OnceLock::new();
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
@@ -50,19 +49,24 @@ enum Direction {
   W,
 }
 
-pub async fn load_stations() {
-  if stops.get().is_some() {return}
-  let resp_text = get(stations_url)
+pub struct CtaStations {
+  stops: Vec<Stop>
+}
+impl CtaStations {
+  pub async fn new() -> Self {
+    let resp_text = get(stations_url)
     .await
-    .expect("Could not load stations data")
-    .text()
-    .await.expect("Could not parse text of stations data");
-  stops.set(serde_json::from_str(&resp_text).expect("Could not parse station data."));
+      .expect("Could not load stations data")
+      .text()
+      .await.expect("Could not parse text of stations data");
+    Self {
+      stops: serde_json::from_str(&resp_text).expect("Could not parse station data.")
+    }
+  }
+  pub async fn get_stop_name(&self, id: i32) -> Option<String> {
+    self.stops.iter().find(|p| {
+      p.map_id == id || p.stop_id == id
+    }).map(|s| s.station_descriptive_name.clone())
+  }
 }
 
-pub async fn get_stop_name(id: i32) -> Option<String> {
-  load_stations().await;
-  stops.get()?.iter().find(|p| {
-    p.map_id == id || p.stop_id == id
-  }).map(|s| s.station_descriptive_name.clone())
-}
