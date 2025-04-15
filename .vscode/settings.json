@@ -2,5 +2,8 @@
   "editor.indentSize": "tabSize",
   "editor.tabSize": 2,
   "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
-  "rust-analyzer.server.path": "rust-analyzer"
+  "rust-analyzer.server.path": "rust-analyzer",
+  "rust-analyzer.cargo.allTargets": false,
+  "rust-analyzer.cargo.targetDir": null,
+  "rust-analyzer.check.command": "clippy"
 }

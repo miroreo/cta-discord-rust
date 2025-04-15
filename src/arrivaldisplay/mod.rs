@@ -1,20 +1,16 @@
 use resvg::tiny_skia::Pixmap;
-use resvg::usvg::{Font, FontResolver, Options, Transform, Tree};
-use svg::node::element::tag::Rectangle;
+use resvg::usvg::{Options, Transform, Tree};
 use svg::Document;
-use svg::node::element::{Path, Rectangle, Style, Symbol, Text, Use, SVG};
-use svg::node::element::path::Data;
+use svg::node::element::{Path, Rectangle, Symbol, Text, Use};
 use serde_variant::to_variant_name;
-use serde::*;
 use thiserror::Error;
 
 
 use resvg::render;
-use fontdb;
 
 use crate::cta::traintracker::LRouteName;
 
-const OFFSET: f32 = 17.1015625;
+const OFFSET: f32 = 17.101_563;
 
 #[derive(Clone, Debug)]
 pub struct Arrival {
@@ -24,7 +20,9 @@ pub struct Arrival {
   pub countdown: String,
   pub is_scheduled: bool
 }
-pub fn train(stopDescription: String, arrivals: Vec<Arrival>) -> Document {
+
+#[allow(clippy::cast_precision_loss)]
+pub fn train(stop_description: String, arrivals: &[Arrival]) -> Document {
   let canvas_height = 65 + arrivals.len() * 105;
 
   let mut document = Document::new()
@@ -58,7 +56,7 @@ pub fn train(stopDescription: String, arrivals: Vec<Arrival>) -> Document {
   .set("fill", "#1e1e1e")
   .set("x", 0)
   .set("y", 0));
-  document = document.add(Text::new(stopDescription)
+  document = document.add(Text::new(stop_description)
     .set("x", 25)
     .set("y", 30.0 + OFFSET)
     .set("fill", "#ffffff")
@@ -191,28 +189,29 @@ pub enum ArrivalDisplayError {
   #[error("Error loading files")]
   FileError(#[from] std::io::Error)
 }
-pub fn render_doc(doc: svg::Document) -> Result<Vec<u8>, ArrivalDisplayError> {
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub fn render_doc(doc: &svg::Document) -> Result<Vec<u8>, ArrivalDisplayError> {
   let mut font_database = fontdb::Database::new();
   match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica.ttf") {
-    Ok(_) => {},
+    Ok(()) => {},
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));
     }
   }
   match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica-Bold.ttf") {
-    Ok(_) => {},
+    Ok(()) => {},
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));
     }
   }
   match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica-Light.ttf") {
-    Ok(_) => {},
+    Ok(()) => {},
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));
     }
   }
-  let mut options = Options::default();
-  options.fontdb = std::sync::Arc::from(font_database);
+  let options = Options{fontdb: std::sync::Arc::from(font_database), ..Default::default()};
+
   let tree = Tree::from_str(doc.to_string().as_str(), &options).expect("Could not fetch Tree from SVG Document");
   // tree.postprocess(PostProcessingSteps::default(), &fontdb);
   let mut pixmap = Pixmap::new(tree.size().width() as u32, tree.size().height() as u32).expect("Couldn't create a new pixmap");

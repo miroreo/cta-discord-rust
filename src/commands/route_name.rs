@@ -1,4 +1,4 @@
-use crate::{cta, CTAShared};
+use crate::CTAShared;
 use serenity::builder::CreateCommand;
 use serenity::model::application::{ResolvedOption, ResolvedValue};
 use serenity::all::{Context, CreateCommandOption, CreateInteractionResponseMessage};
@@ -12,16 +12,14 @@ pub async fn run<'a>(ctx: &Context, options: &'a[ResolvedOption<'a>]) -> CreateI
     value: ResolvedValue::String(id), ..
   }) = options.first()
   {
-    let route_name = gtfs.get_route_name(&id);
-    if let Some(route_name) = route_name {
-      return CreateInteractionResponseMessage::new().content(route_name.to_string())
-    }
+    let route_name = gtfs.get_route_name(id);
+    return CreateInteractionResponseMessage::new().content(route_name.to_string());
   }
   CreateInteractionResponseMessage::new().content("Invalid Route ID".to_string())
 }
 
 pub fn register() -> CreateCommand {
-  let mut id_option = CreateCommandOption::new(serenity::all::CommandOptionType::String, "route_id", "ID of the route").required(true);
+  let id_option = CreateCommandOption::new(serenity::all::CommandOptionType::String, "route_id", "ID of the route").required(true);
   CreateCommand::new("route_name")
     .add_option(id_option)
     .add_integration_type(serenity::all::InstallationContext::Guild)

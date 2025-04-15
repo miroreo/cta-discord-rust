@@ -1,15 +1,15 @@
 use chrono::prelude::*;
 use chrono_tz::{America::Chicago, Tz};
-use serde::*;
-use serde_with::*;
-use reqwest::*;
-use std::{collections::BTreeMap, num::ParseIntError, result::Result};
+use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde, serde_as};
+use reqwest::get;
+use std::result::Result;
 use thiserror::Error;
 
 #[derive(Deserialize, Debug)]
 struct BTResponse<I> {
   #[serde(rename = "bustime-response")]
-  busTimeResponse: I
+  bustime_response: I
 }
 
 #[derive(Deserialize, Debug)]
@@ -123,8 +123,14 @@ pub struct VehiclesParameters {
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum VidOrRt {
-  Vid { Vid: Vec<String> },
-  Rt { Rt: Vec<String> }
+  Vid {
+    #[serde(rename = "Vid")]
+    vehicle_ids: Vec<String> 
+  },
+  Rt {
+    #[serde(rename = "Rt")]
+    route_codes: Vec<String> 
+  }
 }
 
 #[derive(Serialize, Debug)]
@@ -156,19 +162,19 @@ impl BusTracker {
       .text()
       .await?;
     
-    Ok(Self::parse_bustime_secs(&serde_json::from_str::<BTResponse<GetTimeResponse>>(resp_text.as_str())?.busTimeResponse.tm)?)
+    Self::parse_bustime_secs(&serde_json::from_str::<BTResponse<GetTimeResponse>>(resp_text.as_str())?.bustime_response.tm)
   }
   
   pub async fn get_vehicles(&self, options: VehiclesParameters) -> Result<Vec<Vehicle>, BusTrackerError> {
     let params: String = match options.search {
-      VidOrRt::Vid { Vid } => format!("vid={}", Vid.join(",")),
-      VidOrRt::Rt { Rt } => format!("rt={}", Rt.join(",")),
+      VidOrRt::Vid { vehicle_ids: vid } => format!("vid={}", vid.join(",")),
+      VidOrRt::Rt { route_codes: rt } => format!("rt={}", rt.join(",")),
     };
     let resp_text = get(format!("{}getvehicles?key={}&format=json&tmres=s&{}", Self::BASE_URL, self.token, params))
       .await?
       .text()
       .await?;
-    Ok(serde_json::from_str::<BTResponse<GetVehiclesResponse>>(resp_text.as_str()).inspect_err(|e| println!("{}\nError: {e}", resp_text.as_str()))?.busTimeResponse.vehicle)
+    Ok(serde_json::from_str::<BTResponse<GetVehiclesResponse>>(resp_text.as_str()).inspect_err(|e| println!("{}\nError: {e}", resp_text.as_str()))?.bustime_response.vehicle)
   }
 
   pub async fn get_predictions(&self, options: PredictionsParameters) -> Result<Vec<Prediction>, BusTrackerError> {
@@ -185,7 +191,7 @@ impl BusTracker {
       .await?
       .text()
       .await?;
-    Ok(serde_json::from_str::<BTResponse<GetPredictionsResponse>>(resp_text.as_str()).inspect_err(|e| println!("{}\nError: {e}", resp_text.as_str()))?.busTimeResponse.prd)
+    Ok(serde_json::from_str::<BTResponse<GetPredictionsResponse>>(resp_text.as_str()).inspect_err(|e| println!("{}\nError: {e}", resp_text.as_str()))?.bustime_response.prd)
   }
 
   pub fn parse_bustime_secs(timestamp: &str) -> Result<DateTime<chrono_tz::Tz>, BusTrackerError> {
@@ -199,9 +205,9 @@ impl BusTracker {
       .and_local_timezone(tz).latest().ok_or(BusTrackerError::TimeOutOfRange)
   }
   
-  /// This function takes in the TA Block ID from the CTA Bus Tracker get_vehicles route and returns the garage which it corresponds to.
+  /// This function takes in the TA Block ID from the CTA Bus Tracker `get_vehicles` route and returns the garage which it corresponds to.
   pub fn tablockid_to_garage(tablockid: &str) -> Garage {
-    let id = tablockid.split("-").nth(1).unwrap_or("000").chars().nth(0).unwrap_or('0');
+    let id = tablockid.split('-').nth(1).unwrap_or("000").chars().nth(0).unwrap_or('0');
     
     match id.to_digit(10) {
       Some(1) => Garage::Garage103rd,

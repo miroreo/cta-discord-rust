@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
-use serde::*;
-use serde_with::*;
-use reqwest::*;
+use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde, serde_as};
+use reqwest::get;
 use std::result::Result;
 use thiserror::Error;
 use crate::util::bool_from_string;
@@ -15,10 +15,13 @@ struct TopLevelResponse<I> {
 #[derive(Deserialize,Debug)]
 struct PositionTT {
   #[serde_as(as = "DisplayFromStr")]
-  tmst: chrono::NaiveDateTime,
+  #[serde(rename="tmst")]
+  timestamp: chrono::NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  errCd: i32,
-  errNm: Option<String>,
+  #[serde(rename="errCd")]
+  error_code: i32,
+  #[serde(rename="errNm")]
+  error_name: Option<String>,
   route: Vec<TTRoute>,
 }
 
@@ -31,7 +34,7 @@ pub struct TTRoute {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TTPosition {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="rn")]
@@ -89,6 +92,7 @@ struct ArrivalsTT {
   arrivals: Vec<TTArrival>,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct TTArrival {
@@ -130,7 +134,7 @@ pub struct TTArrival {
   pub heading: Option<String>
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum LRouteCode {
   Red,
   P,
@@ -195,53 +199,73 @@ impl From<LRouteName> for LRouteCode {
 #[derive(Deserialize, Debug)]
 struct FollowTrainTT {
   #[serde_as(as = "DisplayFromStr")]
-  tmst: NaiveDateTime,
+  #[serde(rename="tmst")]
+  timestamp: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  errCd: i32,
-  errNm: Option<String>,
+  #[serde(rename="errCd")]
+  error_code: i32,
+  #[serde(rename="errNm")]
+  error_name: Option<String>,
   position: Position,
   eta: Vec<TTFollowEta>
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
-struct Position {
+pub struct Position {
   #[serde_as(as = "DisplayFromStr")]
-  lat: f32,
+  #[serde(rename="lat")]
+  pub latitude: f32,
   #[serde_as(as = "DisplayFromStr")]
-  lon: f32,
+  #[serde(rename="lon")]
+  pub longitude: f32,
   #[serde_as(as = "DisplayFromStr")]
-  heading: i32,
+  pub heading: i32,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct TTFollowEta {
   #[serde_as(as = "DisplayFromStr")]
-  pub staId: i32,
+  #[serde(rename="staId")]
+  pub station_id: i32,
   #[serde_as(as = "DisplayFromStr")]
-  pub stpId: i32,
-  pub staNm: String,
+  #[serde(rename="stpId")]
+  pub stop_id: i32,
+  #[serde(rename="staNm")]
+  pub station_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  pub rn: i32,
-  pub rt: LRouteName,
+  #[serde(rename="rn")]
+  pub run_number: i32,
+  #[serde(rename="rt")]
+  pub route: LRouteName,
   #[serde_as(as = "DisplayFromStr")]
-  pub destSt: i32,
-  pub destNm: String,
+  #[serde(rename="destSt")]
+  pub destination_station: i32,
+  #[serde(rename="destNm")]
+  pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  pub trDr: i8,
+  #[serde(rename="trDr")]
+  pub train_direction: i8,
   #[serde_as(as = "DisplayFromStr")]
-  pub prdt: NaiveDateTime,
+  #[serde(rename="prdt")]
+  pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  pub arrT: NaiveDateTime,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isApp: i8,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isSch: i8,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isDly: i8,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isFlt: i8,
+  #[serde(rename="arrT")]
+  pub arrival_time: NaiveDateTime,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isApp")]
+  pub is_approaching: bool,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isSch")]
+  pub is_scheduled: bool,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isDly")]
+  pub is_delayed: bool,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isFlt")]
+  pub is_faulted: bool,
 }
 
 #[derive(Error, Debug)]
@@ -286,8 +310,8 @@ impl TrainTracker {
   }
   pub async fn arrivals(&self, options: ArrivalsParameters) -> Result<Vec<TTArrival>, TrainTrackerError> {
     let mut params: String = match options.id {
-      MapOrStopID::MapID { mapid } => format!("mapid={}", mapid),
-      MapOrStopID::StopID { stpid } => format!("stpid={}", stpid),
+      MapOrStopID::MapID { mapid } => format!("mapid={mapid}"),
+      MapOrStopID::StopID { stpid } => format!("stpid={stpid}"),
     };
     if options.max.is_some() {
       params = format!("{}&max={}", params, options.max.unwrap());
@@ -299,15 +323,15 @@ impl TrainTracker {
       .await?
       .text()
       .await?;
-    println!("{}", resp_text);
+    // println!("{resp}", resp_text);
     Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.arrivals)
   }
 
   pub async fn positions(&self, rt: Vec<LRouteCode>) -> Result<Vec<TTRoute>, TrainTrackerError> {
     let routes: String = rt.iter()
-      .map(|r| serde_json::ser::to_string(r).ok()).flatten()
-      .fold("".to_string(), |prev, r| 
-        format!("{}{},", prev, r));
+      .filter_map(|r| serde_json::ser::to_string(r).ok())
+      .fold(String::new(), |prev, r| 
+        format!("{prev}{r},"));
     let resp_text = get(format!("{}ttpositions.aspx?rt={routes}&key={}&outputType=JSON", Self::BASE_URL, self.token))
       .await?
       .text()

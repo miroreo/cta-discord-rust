@@ -8,9 +8,6 @@ use serenity::model::application::{ResolvedOption, ResolvedValue};
 use serenity::all::{ComponentInteraction, ComponentInteractionDataKind, Context, CreateAttachment, CreateButton, CreateCommandOption, CreateEmbed, CreateInteractionResponse, CreateInteractionResponseMessage, CreateSelectMenu, CreateSelectMenuKind, CreateSelectMenuOption, InteractionResponseFlags};
 
 pub async fn run<'a>(ctx: &Context, options: &'a[ResolvedOption<'a>]) -> CreateInteractionResponseMessage {
-  let data = ctx.data.read().await;
-  let data = data.get::<CTAShared>().expect("no shared data");
-  let tt = &data.traintracker;
   if let Some(ResolvedOption {  
     value: ResolvedValue::String(val), ..
   }) = options.first()
@@ -20,16 +17,16 @@ pub async fn run<'a>(ctx: &Context, options: &'a[ResolvedOption<'a>]) -> CreateI
   CreateInteractionResponseMessage::new().content("Options not provided.".to_string())
 }
 
-pub async fn arrivals_select(ctx: &Context, component: &ComponentInteraction) -> CreateInteractionResponse {
+pub async fn select(ctx: &Context, component: &ComponentInteraction) -> CreateInteractionResponse {
   if let ComponentInteractionDataKind::StringSelect { values } = &component.data.kind {
-    CreateInteractionResponse::UpdateMessage(arrivals_command(ctx, values.first().unwrap_or(&"".to_string()).as_str()).await)
+    CreateInteractionResponse::UpdateMessage(arrivals_command(ctx, values.first().unwrap_or(&String::new()).as_str()).await)
   }
   else {
     CreateInteractionResponse::Message(CreateInteractionResponseMessage::new().ephemeral(true).content("An error occured while attempting to select the stop."))
   }
 }
 
-pub async fn arrivals_refresh(ctx: &Context, component: &ComponentInteraction) -> CreateInteractionResponse {
+pub async fn refresh(ctx: &Context, component: &ComponentInteraction) -> CreateInteractionResponse {
   let last_time = component.message.edited_timestamp
   .unwrap_or(component.message.timestamp).clone().with_timezone(&chrono::Utc);
   if chrono::Utc::now().signed_duration_since(last_time).num_seconds() <= 30 {
@@ -48,27 +45,24 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
   let tt = &data.traintracker;
   let gtfs = &data.gtfs;
 
-  let found_stop_ids: Vec<String> = match gtfs.search_stops(search) {
-    Some(stops) => stops,
-    None => Vec::new()
-  };
+  let found_stop_ids: Vec<String> = gtfs.search_stops(search).unwrap_or_default();
 
   let mut stations: Vec<Stop> = Vec::new();
-  found_stop_ids.into_iter().for_each(|stop_id| {
+  for stop_id in found_stop_ids {
     let stop = gtfs.gtfs_data.get_stop(stop_id.as_str()).expect("Search result is invalid.");
     // stop IDs over 40000 are train stations.
     let id = str::parse::<i32>(&stop.id).expect("Couldn't parse Stop ID as i32.");
-    if id < 40000 || id > 50000 {
-      return;
+    if !(40000..=50000).contains(&id) {
+      continue;
     }
     stations.push(stop.clone());
-  });
+  }
   if stations.len() > 25 {
     return CreateInteractionResponseMessage::new()
-      .content(format!("Too many results found for that station name. Please narrow your search."))
+      .content("Too many results found for that station name. Please narrow your search.".to_string())
       .flags(InteractionResponseFlags::EPHEMERAL);
   } else if stations.len() > 1 {
-    let mut select_menu_options: Vec<CreateSelectMenuOption> = stations.into_iter().map(|stop| {
+    let select_menu_options: Vec<CreateSelectMenuOption> = stations.into_iter().map(|stop| {
       let name = stop.name.unwrap_or_else(|| format!("Station ID {}", stop.id));
       CreateSelectMenuOption::new(name.clone(), name)
     }).collect();
@@ -77,12 +71,12 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
     // }).collect();
     return CreateInteractionResponseMessage::new()
       .content("Multiple stations found for that query. Please select one")
-      .select_menu(CreateSelectMenu::new("arrivals:select", CreateSelectMenuKind::String { options: select_menu_options.into() })
+      .select_menu(CreateSelectMenu::new("arrivals:select", CreateSelectMenuKind::String { options: select_menu_options })
         .min_values(1)
         .max_values(1))
-  } else if stations.len() == 0 {
+  } else if stations.is_empty() {
     return CreateInteractionResponseMessage::new()
-      .content(format!("No stations found for that search."))
+      .content("No stations found for that search.".to_string())
       .flags(InteractionResponseFlags::EPHEMERAL);
   }
   let station = stations.first().expect("No first station. This should not be possible to reach.");
@@ -93,7 +87,6 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
   }).await;
   match predictions {
     Ok(prds) => {
-      let response = CreateInteractionResponseMessage::new();
       let arrivals: Vec<Arrival> = prds.into_iter().map(|prd| {
         Arrival{
           destination_name: prd.destination_name,
@@ -105,12 +98,12 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
         }
       }).collect();
       let png_data = arrivaldisplay::render_doc(
-        arrivaldisplay::train(
+        &arrivaldisplay::train(
           format!("Upcoming Arrivals for {}", station.name.clone().unwrap_or_else(|| format!("Station ID {}", station.id))),
-          arrivals.into_iter().take(8).collect()));
+          &arrivals[0..8.min(arrivals.len())]));
       match png_data {
         Ok(data) => {
-          return CreateInteractionResponseMessage::new()
+          CreateInteractionResponseMessage::new()
             .content(format!("Arrival Board Generated <t:{}:R>", chrono::Local::now().timestamp()))
             .embed(CreateEmbed::new()
               .title(format!("Arrivals for {}", station.name.clone().unwrap_or_else(|| format!("Station ID {}", station.id))))
@@ -122,29 +115,29 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
             .label("Refresh"))
         },
         Err(ArrivalDisplayError::EncodingError(err)) => {
-          println!("Error encoding arrival board: {}", err);
-          return CreateInteractionResponseMessage::new()
-            .content(format!("Error creating Arrival Board. Please try again later."))
-            .flags(InteractionResponseFlags::EPHEMERAL);
+          println!("Error encoding arrival board: {err}");
+          CreateInteractionResponseMessage::new()
+            .content("Error creating Arrival Board. Please try again later.".to_string())
+            .flags(InteractionResponseFlags::EPHEMERAL)
         }
         Err(ArrivalDisplayError::FileError(err)) => {
-          println!("Error accessing arrival board files: {}", err);
-          return CreateInteractionResponseMessage::new()
-            .content(format!("Error creating Arrival Board. Please try again later."))
-            .flags(InteractionResponseFlags::EPHEMERAL);
+          println!("Error accessing arrival board files: {err}");
+          CreateInteractionResponseMessage::new()
+            .content("Error creating Arrival Board. Please try again later.".to_string())
+            .flags(InteractionResponseFlags::EPHEMERAL)
         }
       }
     },
     Err(e) => {
-      return CreateInteractionResponseMessage::new()
+      CreateInteractionResponseMessage::new()
         .content(format!("Error getting arrivals: {e}"))
-        .flags(InteractionResponseFlags::EPHEMERAL);
+        .flags(InteractionResponseFlags::EPHEMERAL)
     }
   }
 }
 
 pub fn register() -> CreateCommand {
-  let mut run_option = CreateCommandOption::new(serenity::all::CommandOptionType::String, "station_name", "Station Name Search").required(true);
+  let run_option = CreateCommandOption::new(serenity::all::CommandOptionType::String, "station_name", "Station Name Search").required(true);
   CreateCommand::new("arrivals")
     .add_option(run_option)
     .add_integration_type(serenity::all::InstallationContext::Guild)

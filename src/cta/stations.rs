@@ -63,7 +63,7 @@ impl CtaStations {
       stops: serde_json::from_str(&resp_text).expect("Could not parse station data.")
     }
   }
-  pub async fn get_stop_name(&self, id: i32) -> Option<String> {
+  pub fn get_stop_name(&self, id: i32) -> Option<String> {
     self.stops.iter().find(|p| {
       p.map_id == id || p.stop_id == id
     }).map(|s| s.station_descriptive_name.clone())

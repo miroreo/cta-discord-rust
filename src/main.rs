@@ -1,19 +1,17 @@
+#![warn(clippy::pedantic)]
 mod commands;
 mod cta;
 mod arrivaldisplay;
 mod util;
 extern crate dotenv;
 
-use cta::gtfs::CtaGTFS;
-use cta::stations::CtaStations;
 use dotenv::dotenv;
-use serenity::all::{Command, CreateInteractionResponse, Interaction};
-use std::collections::HashMap;
+use serenity::all::{CreateInteractionResponse, Interaction};
 use std::env;
 use std::sync::Arc;
 
-use serenity::{async_trait, FutureExt};
-use serenity::model::prelude::{Message, Ready};
+use serenity::async_trait;
+use serenity::model::prelude::Ready;
 use serenity::prelude::*;
 use serenity::all::CreateInteractionResponseMessage;
 
@@ -79,9 +77,9 @@ impl EventHandler for Handler {
         } else if component.data.custom_id.as_str().starts_with("bus_arrivals:refresh") {
           Some(commands::bus::arrivals_refresh(&ctx, &component).await)
         } else if component.data.custom_id.as_str().starts_with("arrivals:select") {
-          Some(commands::arrivals::arrivals_select(&ctx, &component).await)
+          Some(commands::arrivals::select(&ctx, &component).await)
         } else if component.data.custom_id.as_str().starts_with("arrivals:refresh") {
-          Some(commands::arrivals::arrivals_refresh(&ctx, &component).await)
+          Some(commands::arrivals::refresh(&ctx, &component).await)
         } else {
           Some(CreateInteractionResponse::Message(CreateInteractionResponseMessage::new().content("not implemented yet.")))
         };

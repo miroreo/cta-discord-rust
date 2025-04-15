@@ -45,7 +45,7 @@ impl CtaGTFS {
   
       }
       Err(err) => {
-        println!("Error detecting docker GTFS")
+        println!("Error detecting docker GTFS: {err}")
       }
     }
     println!("Starting web GTFS Data Load.");
@@ -67,14 +67,14 @@ impl CtaGTFS {
     panic!("exiting to refresh GTFS data loaded.");
   }
 
-  pub fn get_route_name(&self, id: &str) -> Option<String> {
+  pub fn get_route_name(&self, id: &str) -> std::string::String {
     // load_gtfs().await;
-    Some(self.gtfs_data
+    self.gtfs_data
       .get_route(id)
       .expect("Invalid route ID.")
       .long_name.as_ref()
       .expect("Route has no long name")
-      .to_string())
+      .to_string()
   }
 
   pub fn search_stops(&self, search: &str) -> Option<Vec<String>> {
