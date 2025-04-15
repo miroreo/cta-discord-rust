@@ -4,6 +4,7 @@ use serde_with::*;
 use reqwest::*;
 use std::result::Result;
 use thiserror::Error;
+use crate::util::bool_from_string;
 
 #[derive(Deserialize,Debug)]
 struct TopLevelResponse<I> {
@@ -33,26 +34,38 @@ pub struct TTRoute {
 #[derive(Deserialize, Debug)]
 pub struct TTPosition {
   #[serde_as(as = "DisplayFromStr")]
-  pub rn: i32,
-  pub rt: Option<LRouteCode>,
+  #[serde(rename="rn")]
+  pub run_number: i32,
+  #[serde(rename="rt")]
+  pub route: Option<LRouteCode>,
   #[serde_as(as = "DisplayFromStr")]
-  pub destSt: i32,
-  pub destNm: String,
+  #[serde(rename="destSt")]
+  pub destination_station: i32,
+  #[serde(rename="destNm")]
+  pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  pub trDr: i8,
+  #[serde(rename="trDr")]
+  pub train_direction: i8,
   #[serde_as(as = "DisplayFromStr")]
-  pub nextStaId: i32,
+  #[serde(rename="nextStaId")]
+  pub next_station_id: i32,
   #[serde_as(as = "DisplayFromStr")]
-  pub nextStpId: i32,
-  pub nextStaNm: String,
+  #[serde(rename="nextStpId")]
+  pub next_stop_id: i32,
+  #[serde(rename="nextStaNm")]
+  pub next_station_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  pub prdt: NaiveDateTime,
+  #[serde(rename="prdt")]
+  pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  pub arrT: NaiveDateTime,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isApp: i8,
-  #[serde_as(as = "DisplayFromStr")]
-  pub isDly: i8,
+  #[serde(rename="arrT")]
+  pub arrival_time: NaiveDateTime,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isApp")]
+  pub is_approaching: bool,
+  #[serde(deserialize_with = "bool_from_string")]
+  #[serde(rename="isDly")]
+  pub is_delayed: bool,
   #[serde_as(as = "DisplayFromStr")]
   pub lat: f32,
   #[serde_as(as = "DisplayFromStr")]
@@ -65,11 +78,15 @@ pub struct TTPosition {
 #[derive(Deserialize, Debug)]
 struct ArrivalsTT {
   #[serde_as(as = "DisplayFromStr")]
-  tmst: chrono::NaiveDateTime,
+  #[serde(rename="tmst")]
+  timestamp: chrono::NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  errCd: i32,
-  errNm: Option<String>,
-  eta: Vec<TTArrival>,
+  #[serde(rename="errCd")]
+  error_code: i32,
+  #[serde(rename="errNm")]
+  error_name: Option<String>,
+  #[serde(rename="eta")]
+  arrivals: Vec<TTArrival>,
 }
 
 #[serde_as]
@@ -94,18 +111,18 @@ pub struct TTArrival {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="arrT")]
   pub arrival_time: NaiveDateTime,
-  #[serde_as(as = "DisplayFromStr")]
+  #[serde(deserialize_with = "bool_from_string")]
   #[serde(rename="isApp")]
-  pub is_approaching: i8,
-  #[serde_as(as = "DisplayFromStr")]
+  pub is_approaching: bool,
+  #[serde(deserialize_with = "bool_from_string")]
   #[serde(rename="isSch")]
-  pub is_scheduled: i8,
-  #[serde_as(as = "DisplayFromStr")]
+  pub is_scheduled: bool,
+  #[serde(deserialize_with = "bool_from_string")]
   #[serde(rename="isDly")]
-  pub is_delayed: i8,
-  #[serde_as(as = "DisplayFromStr")]
+  pub is_delayed: bool,
+  #[serde(deserialize_with = "bool_from_string")]
   #[serde(rename="isFlt")]
-  pub is_faulted: i8,
+  pub is_faulted: bool,
   #[serde(rename="lat")]
   pub latitude: Option<String>,
   #[serde(rename="lon")]
@@ -283,7 +300,7 @@ impl TrainTracker {
       .text()
       .await?;
     println!("{}", resp_text);
-    Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.eta)
+    Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.arrivals)
   }
 
   pub async fn positions(&self, rt: Vec<LRouteCode>) -> Result<Vec<TTRoute>, TrainTrackerError> {

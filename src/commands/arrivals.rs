@@ -100,7 +100,7 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
           route: prd.route.into(),
           countdown: util::countdown(
             util::minutes_until(prd.arrival_time.and_local_timezone(chrono_tz::America::Chicago).unwrap())),
-          is_scheduled: prd.is_scheduled.is_positive(),
+          is_scheduled: prd.is_scheduled,
           train_number: prd.run_number
         }
       }).collect();
