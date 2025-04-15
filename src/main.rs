@@ -1,5 +1,7 @@
 mod commands;
 mod cta;
+mod arrivaldisplay;
+mod util;
 extern crate dotenv;
 
 use cta::gtfs::CtaGTFS;
@@ -51,20 +53,41 @@ impl EventHandler for Handler {
   // }
   
   async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-    if let Interaction::Command(command) = interaction {
+    if let Interaction::Command(command) = interaction.clone() {
       // println!("Recieved command interaction: {command:#?}");
-      
       let content = match command.data.name.as_str() {
         "ping" => Some(commands::ping::run(&command.data.options())),
         "route_name" => Some(commands::route_name::run(&ctx, &command.data.options()).await),
         "get_train" => Some(commands::get_train::run(&ctx, &command.data.options()).await),
         "bus" => Some(commands::bus::run(&ctx, &command.data.options()).await),
+        "arrivals" => Some(commands::arrivals::run(&ctx, &command.data.options()).await),
         _ => Some(CreateInteractionResponseMessage::new().content("not implemented yet.".to_string())),
       };
+      // let content = match command.data.
       if let Some(content) = content {
         let data = content;
         let builder = CreateInteractionResponse::Message(data);
         if let Err(why) = command.create_response(&ctx.http, builder).await {
+          println!("Cannot respond to slash command: {why}");
+        }
+      }
+    }
+    if let Interaction::Component(component) = interaction {
+      let content = 
+        if component.data.custom_id.as_str().starts_with("bus_arrivals:select") {
+          Some(commands::bus::arrivals_select(&ctx, &component).await)
+        } else if component.data.custom_id.as_str().starts_with("bus_arrivals:refresh") {
+          Some(commands::bus::arrivals_refresh(&ctx, &component).await)
+        } else if component.data.custom_id.as_str().starts_with("arrivals:select") {
+          Some(commands::arrivals::arrivals_select(&ctx, &component).await)
+        } else if component.data.custom_id.as_str().starts_with("arrivals:refresh") {
+          Some(commands::arrivals::arrivals_refresh(&ctx, &component).await)
+        } else {
+          Some(CreateInteractionResponse::Message(CreateInteractionResponseMessage::new().content("not implemented yet.")))
+        };
+      if let Some(content) = content {
+        let data = content;
+        if let Err(why) = component.create_response(&ctx.http, data).await {
           println!("Cannot respond to slash command: {why}");
         }
       }
@@ -75,7 +98,7 @@ impl EventHandler for Handler {
 #[tokio::main]
 async fn main() {
   // #![warn(clippy::pedantic)]
-  
+  // arrivaldisplay::m();
   dotenv().ok();
   let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 

@@ -74,36 +74,46 @@ struct ArrivalsTT {
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
-struct TTArrival {
+pub struct TTArrival {
   #[serde_as(as = "DisplayFromStr")]
-  rn: i32,
-  rt: LRouteCode,
+  #[serde(rename="rn")]
+  pub run_number: i32,
+  #[serde(rename="rt")]
+  pub route: LRouteCode,
   #[serde_as(as = "DisplayFromStr")]
-  destSt: i32,
-  destNm: String,
+  #[serde(rename="destSt")]
+  pub destination_station: i32,
+  #[serde(rename="destNm")]
+  pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  trDr: i8,
+  #[serde(rename="trDr")]
+  pub train_direction: i8,
   #[serde_as(as = "DisplayFromStr")]
-  prdt: NaiveDateTime,
+  #[serde(rename="prdt")]
+  pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  arrT: NaiveDateTime,
+  #[serde(rename="arrT")]
+  pub arrival_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  isApp: i8,
+  #[serde(rename="isApp")]
+  pub is_approaching: i8,
   #[serde_as(as = "DisplayFromStr")]
-  isSch: i8,
+  #[serde(rename="isSch")]
+  pub is_scheduled: i8,
   #[serde_as(as = "DisplayFromStr")]
-  isDly: i8,
+  #[serde(rename="isDly")]
+  pub is_delayed: i8,
   #[serde_as(as = "DisplayFromStr")]
-  isFlt: i8,
-  #[serde_as(as = "DisplayFromStr")]
-  lat: f32,
-  #[serde_as(as = "DisplayFromStr")]
-  lon: f32,
-  #[serde_as(as = "DisplayFromStr")]
-  heading: i32
+  #[serde(rename="isFlt")]
+  pub is_faulted: i8,
+  #[serde(rename="lat")]
+  pub latitude: Option<String>,
+  #[serde(rename="lon")]
+  pub longitude: Option<String>,
+  pub heading: Option<String>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum LRouteCode {
   Red,
   P,
@@ -115,7 +125,7 @@ pub enum LRouteCode {
   Brn
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum LRouteName {
   #[serde(rename="Red Line")]
   Red,
@@ -228,13 +238,13 @@ pub enum TrainTrackerError {
 #[derive(Serialize, Debug)]
 pub struct ArrivalsParameters {
   #[serde(flatten)]
-  id: MapOrStopID,
-  max: Option<i32>,
-  rt: Option<String>,
+  pub id: MapOrStopID,
+  pub max: Option<i32>,
+  pub rt: Option<String>,
 }
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
-enum MapOrStopID {
+pub enum MapOrStopID {
   MapID { mapid: i32 },
   StopID { stpid: i32 }
 }
@@ -268,10 +278,11 @@ impl TrainTracker {
     if options.rt.is_some() {
       params = format!("{}&rt={}", params, options.rt.unwrap().as_str());
     }
-    let resp_text = get(format!("{}ttarrivals.aspx?{}&key={}", Self::BASE_URL, params, self.token))
+    let resp_text = get(format!("{}ttarrivals.aspx?{}&key={}&outputType=JSON", Self::BASE_URL, params, self.token))
       .await?
       .text()
       .await?;
+    println!("{}", resp_text);
     Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.eta)
   }
 

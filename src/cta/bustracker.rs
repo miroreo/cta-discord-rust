@@ -1,4 +1,5 @@
 use chrono::prelude::*;
+use chrono_tz::{America::Chicago, Tz};
 use serde::*;
 use serde_with::*;
 use reqwest::*;
@@ -149,13 +150,13 @@ impl BusTracker {
       token: token.to_string()
     }
   }
-  pub async fn get_time(&self) -> Result<DateTime<FixedOffset>, BusTrackerError> {
+  pub async fn get_time(&self) -> Result<DateTime<Tz>, BusTrackerError> {
     let resp_text = get(format!("{}gettime?key={}&format=json", Self::BASE_URL, self.token))
       .await?
       .text()
       .await?;
     
-    Ok(Self::parse_bustime(&serde_json::from_str::<BTResponse<GetTimeResponse>>(resp_text.as_str())?.busTimeResponse.tm)?)
+    Ok(Self::parse_bustime_secs(&serde_json::from_str::<BTResponse<GetTimeResponse>>(resp_text.as_str())?.busTimeResponse.tm)?)
   }
   
   pub async fn get_vehicles(&self, options: VehiclesParameters) -> Result<Vec<Vehicle>, BusTrackerError> {
@@ -187,10 +188,14 @@ impl BusTracker {
     Ok(serde_json::from_str::<BTResponse<GetPredictionsResponse>>(resp_text.as_str()).inspect_err(|e| println!("{}\nError: {e}", resp_text.as_str()))?.busTimeResponse.prd)
   }
 
-  fn parse_bustime(timestamp: &str) -> Result<DateTime<FixedOffset>, BusTrackerError> {
-    let tz = chrono::FixedOffset::west_opt(6*3600).unwrap();
+  pub fn parse_bustime_secs(timestamp: &str) -> Result<DateTime<chrono_tz::Tz>, BusTrackerError> {
+    let tz = Chicago;
     NaiveDateTime::parse_from_str(timestamp, "%Y%m%d %H:%M:%S")?
-      .checked_sub_offset(tz).ok_or(BusTrackerError::TimeOutOfRange)?
+      .and_local_timezone(tz).latest().ok_or(BusTrackerError::TimeOutOfRange)
+  }
+  pub fn parse_bustime(timestamp: &str) -> Result<DateTime<chrono_tz::Tz>, BusTrackerError> {
+    let tz = Chicago;
+    NaiveDateTime::parse_from_str(timestamp, "%Y%m%d %H:%M")?
       .and_local_timezone(tz).latest().ok_or(BusTrackerError::TimeOutOfRange)
   }
   

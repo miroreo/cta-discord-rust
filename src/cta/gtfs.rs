@@ -1,4 +1,4 @@
-use gtfs_structures::{Gtfs, GtfsReader};
+use gtfs_structures::{Gtfs, GtfsReader, Stop};
 use std::{env, fs, sync::OnceLock};
 
 static gtfs_url: &str = "https://www.transitchicago.com/downloads/sch_data/google_transit.zip";
