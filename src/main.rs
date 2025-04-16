@@ -6,7 +6,7 @@ mod util;
 extern crate dotenv;
 
 use dotenv::dotenv;
-use serenity::all::{CreateInteractionResponse, Interaction};
+use serenity::all::{CommandOptionType, CreateAutocompleteResponse, CreateInteractionResponse, Interaction};
 use std::env;
 use std::sync::Arc;
 
@@ -39,8 +39,8 @@ impl EventHandler for Handler {
   async fn ready(&self, ctx: Context, r: Ready) {
     println!("Connected as {}", r.user.name);
 
+    init_shared(&ctx).await;
     commands::initialize(ctx.clone()).await;
-    init_shared(ctx).await;
   }
   // async fn message(&self, ctx: Context, msg: Message) {
   //   if msg.content == "!ping" {
@@ -70,7 +70,7 @@ impl EventHandler for Handler {
         }
       }
     }
-    if let Interaction::Component(component) = interaction {
+    if let Interaction::Component(component) = interaction.clone() {
       let content = 
         if component.data.custom_id.as_str().starts_with("bus_arrivals:select") {
           Some(commands::bus::arrivals_select(&ctx, &component).await)
@@ -89,6 +89,17 @@ impl EventHandler for Handler {
           println!("Cannot respond to slash command: {why}");
         }
       }
+    }
+    if let Interaction::Autocomplete(autocomplete) = interaction {
+      let content = Some(commands::autocomplete::handle_autocomplete(&ctx, &autocomplete).await);
+      if let Some(content) = content {
+        let data = content;
+        if let Err(why) = autocomplete.create_response(&ctx.http, data).await {
+          println!("Cannot respond to autocomplete: {why}");
+        }
+      }
+    } else {
+      Some(CreateInteractionResponse::Autocomplete(CreateAutocompleteResponse::new()));
     }
   }
 }
@@ -114,7 +125,7 @@ async fn main() {
   
 }
 
-async fn init_shared(ctx: Context) {
+async fn init_shared(ctx: &Context) {
   println!("Initializing Shared Data.");
   // let ctaTT = cta::traintracker::TrainTracker::new();
   let initial_cta_shared = CTASharedData {

@@ -5,6 +5,11 @@ pub mod route_name;
 pub mod get_train;
 pub mod bus;
 pub mod arrivals;
+pub mod autocomplete;
+
+pub struct BotCommand {
+  
+}
 pub async fn initialize(context: Context) {
   println!("Initializing Global Commands");
   if let Err(why) = Command::set_global_commands(&context.http, vec![

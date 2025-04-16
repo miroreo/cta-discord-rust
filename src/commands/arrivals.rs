@@ -137,9 +137,10 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
 }
 
 pub fn register() -> CreateCommand {
-  let run_option = CreateCommandOption::new(serenity::all::CommandOptionType::String, "station_name", "Station Name Search").required(true);
+  // let station_name_auto = CreateCommandOption::new(serenity::all::CommandOptionType::String, "station_name", "Station Name")
+  let station_name = CreateCommandOption::new(serenity::all::CommandOptionType::String, "station_name", "Station Name Search").required(true).set_autocomplete(true);
   CreateCommand::new("arrivals")
-    .add_option(run_option)
+    .add_option(station_name)
     .add_integration_type(serenity::all::InstallationContext::Guild)
     .add_integration_type(serenity::all::InstallationContext::User)
     .description("Gets information about a given train.")

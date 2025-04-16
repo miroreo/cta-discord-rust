@@ -148,6 +148,10 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
       .select_menu(CreateSelectMenu::new("bus_arrivals:select", CreateSelectMenuKind::String { options: select_menu_options })
         .min_values(1)
         .max_values(1))
+  } else if stops.is_empty() {
+    return CreateInteractionResponseMessage::new()
+      .content("No stops found for that search, please try again.")
+      .ephemeral(true);
   }
   for stop in stops.keys() {
     println!("{stop}");
@@ -229,7 +233,7 @@ pub fn register() -> CreateCommand {
         serenity::all::CommandOptionType::String,
         "stop_name",
         "Stop Name search"
-      ).required(true))
+      ).required(true).set_autocomplete(true))
     )
     .add_integration_type(serenity::all::InstallationContext::User)
     .add_integration_type(serenity::all::InstallationContext::Guild)
