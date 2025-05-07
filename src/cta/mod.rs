@@ -1,3 +1,4 @@
+use alerts::AlertsOptions;
 use bustracker::BusTracker;
 use gtfs::CtaGTFS;
 use traintracker::TrainTracker;
@@ -8,6 +9,7 @@ pub mod traintracker;
 pub mod gtfs;
 pub mod bustracker;
 pub mod analysis;
+pub mod alerts;
 
 struct CtaOptions<'a> {
   traintracker_token: &'a str,
@@ -23,7 +25,7 @@ impl CTA {
     let tt = TrainTracker::new(options.traintracker_token);
     let bt = BusTracker::new(options.bustracker_token);
     let cta_gtfs = CtaGTFS::new().await;
-
+    
     Self {
       traintracker: tt,
       bustracker: bt,
