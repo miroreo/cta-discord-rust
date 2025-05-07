@@ -91,7 +91,7 @@ impl EventHandler for Handler {
       }
     }
     if let Interaction::Autocomplete(autocomplete) = interaction {
-      let content = Some(commands::autocomplete::handle_autocomplete(&ctx, &autocomplete).await);
+      let content = Some(commands::autocomplete::handle(&ctx, &autocomplete).await);
       if let Some(content) = content {
         let data = content;
         if let Err(why) = autocomplete.create_response(&ctx.http, data).await {

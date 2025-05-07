@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde, serde_as};
 use reqwest::get;
-use std::result::Result;
+use std::{result::Result, str::FromStr};
 use thiserror::Error;
 use crate::util::bool_from_string;
 
@@ -30,7 +30,8 @@ struct PositionTT {
 pub struct TTRoute {
   #[serde(rename="@name")]
   pub name: LRouteCode,
-  pub train: Vec<TTPosition>,
+  #[serde(rename="train")]
+  pub trains: Vec<TTPosition>,
 }
 
 #[serde_as]
@@ -247,7 +248,7 @@ pub struct TTFollowEta {
   pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="trDr")]
-  pub train_direction: i8,
+  pub train_direction: TrainDirection,
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="prdt")]
   pub prediction_time: NaiveDateTime,
@@ -268,12 +269,29 @@ pub struct TTFollowEta {
   pub is_faulted: bool,
 }
 
+#[derive(Debug, Clone)]
+pub enum TrainDirection {
+  Northbound = 1,
+  Southbound = 5,
+}
+impl FromStr for TrainDirection {
+  type Err = TrainTrackerError;
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "1" => Ok(TrainDirection::Northbound),
+      "5" => Ok(TrainDirection::Southbound),
+      _ => Err(TrainTrackerError::DataError)
+    }
+  }
+}
 #[derive(Error, Debug)]
 pub enum TrainTrackerError {
   #[error("Failed to fetch data from TrainTracker API")]
   RequestError(#[from] reqwest::Error),
   #[error("Failed to parse JSON data returned from TrainTracker API")]
   ParseError(#[from] serde_json::Error),
+  #[error("TrainTracker API provided invalid data")]
+  DataError,
 }
 
 #[derive(Serialize, Debug)]
