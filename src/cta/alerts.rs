@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{DisplayFromStr, serde, serde_as};
 use thiserror::Error;
-use reqwest::get;
 use crate::util::bool_from_string;
 
 const ALERTS_URL: &str = "https://www.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON";
@@ -17,6 +16,8 @@ pub enum AlertsError {
   ParseError(#[from] serde_json::Error),
   #[error("Alerts API provided invalid data")]
   DataError,
+  #[error("There are no active alerts.")]
+  NoAlerts
 }
 
 #[serde_as]
@@ -37,7 +38,7 @@ struct CTAAlerts {
   #[serde(rename="ErrorMessage")]
   error_message: Option<String>,
   #[serde(rename="Alert")]
-  alerts: Vec<Alert>,
+  alerts: Option<Vec<Alert>>,
 }
 
 #[serde_as]
@@ -45,7 +46,7 @@ struct CTAAlerts {
 pub struct Alert {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="AlertId")]
-  pub alert_id: i32,
+  pub id: i32,
   #[serde(rename="Headline")]
   pub headline: String,
   #[serde(rename="ShortDescription")]
@@ -84,7 +85,7 @@ pub struct Alert {
 
 #[serde(untagged)]
 #[derive(Deserialize, Debug)]
-enum DateOrDateTime {
+pub enum DateOrDateTime {
   DateTime(NaiveDateTime),
   Date(NaiveDate)
 }
@@ -116,7 +117,7 @@ impl<'de> Deserialize<'de> for ImpactedService {
     if let Some(array) = value["Service"].as_array() {
       let children = serde_json::from_value::<Vec<Service>>(Value::Array(array.clone()))
         .map_err(serde::de::Error::custom)?;
-      dbg!(&children);
+      // dbg!(&children);
       Ok(ImpactedService{
         impacted_services: children
       })
@@ -195,7 +196,13 @@ pub async fn get_active_alerts(options: AlertsOptions) -> Result<Vec<Alert>, Ale
     .await?
     .text()
     .await?;
-  println!("{}", response_text);
+  // println!("{}", response_text);
   let response: AlertsAPIResponse = serde_json::from_str::<AlertsAPIResponse>(&response_text)?;
-  return Ok(response.alerts.alerts);
+  match response.alerts.alerts {
+    Some(data) => Ok(data),
+    None => match response.alerts.error_code {
+        50 | 25 => Ok(Vec::<Alert>::new()),
+        _ => Err(AlertsError::DataError),
+    },
+  }
 }

@@ -360,3 +360,53 @@ impl TrainTracker {
       .route)
   }
 }
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_parse_arrival() {
+        assert_eq!(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&"{ 
+    \"ctatt\":{ 
+        \"tmst\":\"2015-04-30T20:23:53\",
+        \"errCd\":\"0\",
+        \"errNm\":null,
+        \"eta\":[ 
+           { 
+               \"staId\":\"40960\",
+               \"stpId\":\"30185\",
+               \"staNm\":\"Pulaski\",
+               \"stpDe\":\"Service toward Loop\",
+               \"rn\":\"726\",
+               \"rt\":\"Org\",
+               \"destSt\":\"30182\",
+               \"destNm\":\"Loop\",
+               \"trDr\":\"1\",
+               \"prdt\":\"2015-04-30T20:23:32\",
+               \"arrT\":\"2015-04-30T20:25:32\",
+               \"isApp\":\"0\",
+               \"isSch\":\"0\",
+               \"isDly\":\"0\",
+               \"isFlt\":\"0\",
+               \"flags\":null,
+               \"lat\":\"41.78661\",
+               \"lon\":\"-87.73796\",
+               \"heading\":\"357\"
+           }
+        ]
+    }
+}")?.ctatt.arrivals, vec![Arrival{
+  
+}]);
+    }
+
+    #[test]
+    fn test_bad_add() {
+        // This assert would fire and test will fail.
+        // Please note, that private functions can be tested too!
+        assert_eq!(bad_add(1, 2), 3);
+    }
+}
+

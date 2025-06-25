@@ -3,9 +3,16 @@ name = "cta-discord-rust"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = 1
+incremental = false
+[profile.dev.package."*"]
+opt-level = 1
+
 [dependencies]
 serenity = "0.12"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
 dotenv = "0.15.0"
 gtfs-structures = "0.43.0"
 serde = "1.0.217"
@@ -24,3 +31,4 @@ png = "0.17.16"
 fuzzy-matcher = "0.3.7"
 serde-query = "0.2.0"
 serde_structuredqs = "0.2.0"
+log = "0.4.27"

@@ -3,12 +3,15 @@ mod commands;
 mod cta;
 mod arrivaldisplay;
 mod util;
+mod db;
+mod watcher;
 extern crate dotenv;
 
 use dotenv::dotenv;
 use serenity::all::{CommandOptionType, CreateAutocompleteResponse, CreateInteractionResponse, Interaction};
 use std::env;
 use std::sync::Arc;
+use sqlx::{Connection, PgConnection};
 
 use serenity::async_trait;
 use serenity::model::prelude::Ready;
@@ -20,6 +23,7 @@ pub struct CTASharedData {
   pub bustracker: cta::bustracker::BusTracker,
   pub stations: cta::stations::CtaStations,
   pub gtfs: cta::gtfs::CtaGTFS,
+  pub db_url: String,
   // info: Info,
 }
 pub struct CTAShared;
@@ -41,6 +45,8 @@ impl EventHandler for Handler {
 
     init_shared(&ctx).await;
     commands::initialize(ctx.clone()).await;
+
+    tokio::spawn(watcher::watch(ctx.clone()));
   }
   // async fn message(&self, ctx: Context, msg: Message) {
   //   if msg.content == "!ping" {
@@ -129,11 +135,25 @@ async fn init_shared(ctx: &Context) {
   println!("Initializing Shared Data.");
   // let ctaTT = cta::traintracker::TrainTracker::new();
   let initial_cta_shared = CTASharedData {
-    bustracker: cta::bustracker::BusTracker::new(env::var("CTA_BUS_API_KEY").expect("CTA_BUS_API_KEY not found!").as_str()),
+    bustracker: cta::bustracker::BusTracker::new(
+      env::var("CTA_BUS_API_KEY")
+      .expect("CTA_BUS_API_KEY not found!")
+      .as_str()),
     gtfs: cta::gtfs::CtaGTFS::new().await,
-    traintracker: cta::traintracker::TrainTracker::new(env::var("CTA_RAIL_API_KEY").expect("CTA_RAIL_API_KEY not found.").as_str()),
-    stations: cta::stations::CtaStations::new().await
+    traintracker: cta::traintracker::TrainTracker::new(
+      env::var("CTA_RAIL_API_KEY")
+      .expect("CTA_RAIL_API_KEY not found.")
+      .as_str()),
+    stations: cta::stations::CtaStations::new().await,
+    db_url: env::var("DATABASE_URL")
+      .expect("DATABASE_URL not found.")
+        
+    // db_connection: PgConnection::connect(
+    //   ).await
+    //   .expect("Couldn't connect to database.")
   };
+  db::get_guilds(initial_cta_shared.db_url.clone()).await;
+  db::get_value(initial_cta_shared.db_url.clone(), "last_alert_id").await;
   let mut data = ctx.data.write().await;
   data.insert::<CTAShared>(Arc::new(initial_cta_shared));
   println!("Initialized Shared Data.");

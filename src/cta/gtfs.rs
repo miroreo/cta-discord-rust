@@ -1,7 +1,7 @@
-use gtfs_structures::{Gtfs, GtfsReader, Stop};
-use std::{env, fs, sync::OnceLock};
+use gtfs_structures::{Gtfs};
+use std::{env, fs};
 
-static gtfs_url: &str = "https://www.transitchicago.com/downloads/sch_data/google_transit.zip";
+static GTFS_URL: &str = "https://www.transitchicago.com/downloads/sch_data/google_transit.zip";
 static DOCKER_GTFS_PATH: &str = "/data/google_transit.zip";
 
 #[derive(Default)]
@@ -11,8 +11,6 @@ pub struct CtaGTFS {
 
 impl CtaGTFS {
   pub async fn new() -> Self {
-    let new_self: Self;
-
     let reader = gtfs_structures::GtfsReader::default()
       .read_stop_times(false)
       .read_shapes(false)
@@ -49,18 +47,16 @@ impl CtaGTFS {
       }
     }
     println!("Starting web GTFS Data Load.");
-    // new_self.gtfs_data =
-    // println!("GTFS Data Loaded.");
-    // new_self
+
     Self {
-      gtfs_data: gtfs_structures::GtfsReader::read_from_url_async(reader, gtfs_url).await.expect("Error downloading GTFS data. ")
+      gtfs_data: gtfs_structures::GtfsReader::read_from_url_async(reader, GTFS_URL).await.expect("Error downloading GTFS data. ")
     }
   }
   
   pub async fn reload_gtfs() {
     let path = if env::var("DEVELOPMENT").ok().eq(&Some("1".to_string())) { "./google_transit.zip" } else {"/data/google_transit.zip"};
     println!("GTFS data reload has been requested. App will restart.");
-    let resp = reqwest::get(gtfs_url).await.expect("request failed");
+    let resp = reqwest::get(GTFS_URL).await.expect("request failed");
     let body = resp.text().await.expect("body invalid");
     let mut out = std::fs::OpenOptions::new().write(true).truncate(true).open(path).expect("Could not get gtfs file to overwrite.");
     std::io::copy(&mut body.as_bytes(), &mut out).expect("failed to copy content");
@@ -79,8 +75,8 @@ impl CtaGTFS {
 
   pub fn search_stops(&self, search: &str) -> Option<Vec<String>> {
     let mut found_stops: Vec<String> = Vec::new();
-    self.gtfs_data.stops.clone().into_values().into_iter().for_each(|stop| {
-      if stop.name.clone().unwrap_or("".to_string()).contains(search) {
+    self.gtfs_data.stops.clone().into_values().for_each(|stop| {
+      if stop.name.clone().unwrap_or(String::new()).contains(search) {
         found_stops.push(stop.id.clone());
       }
     });
