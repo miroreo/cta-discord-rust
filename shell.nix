@@ -1,6 +1,6 @@
 { pkgs ? import <nixpkgs> {}}:
 
-pkgs.mkShell {
+pkgs.mkShell rec {
   # buildInputs = [
   # ];
   buildInputs = with pkgs; [
@@ -11,15 +11,10 @@ pkgs.mkShell {
     clippy
     openssl
     pkg-config
-    # rustChannels.stable.rust-src
-
-    # (
-    #   pkgs.rust-bin.stable.latest.rust.override {
-    #     extensions = [ "rust-src" ];
-    #   }
-    # )
-    
+    mold
+    clang
   ];
+  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
   RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
   RUST_BACKTRACE = 1;
 }
