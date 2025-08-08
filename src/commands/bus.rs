@@ -153,14 +153,7 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
       .content("No stops found for that search, please try again.")
       .ephemeral(true);
   }
-  for stop in stops.keys() {
-    println!("{stop}");
-  }
-  for id in stops.values() {
-    println!("{}", id.join(","));
-  }
   let stop_ids: Vec<String> = stops.values().flat_map(|v| {v.iter().cloned()}).collect();
-  println!("{}", stop_ids.join(","));
   let predictions = bt.get_predictions(PredictionsParameters {
     search: cta::bustracker::StpidOrVid::StpId { stpid: stop_ids, rt: None }
   }).await;
