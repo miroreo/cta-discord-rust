@@ -7,18 +7,18 @@ use serenity::all::{ChannelId, Context, CreateMessage};
 use crate::{cta::{self, alerts::{AlertsError, AlertsOptions, DateOrDateTime}}, db, CTAShared};
 
 pub async fn watch(ctx: Context) {
-  // send_alert(ctx.clone(), "Test".to_string()).await;
+  static INTERVAL_SECS: u64 = 10;
+  println!("Alert watcher task spawned. Polling every {INTERVAL_SECS} seconds.");
   loop {
     check(ctx.clone()).await;
-
-    sleep(Duration::from_secs(10));
+    sleep(Duration::from_secs(INTERVAL_SECS));
   }
 }
 async fn check(ctx: Context) {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
   let alerts = cta::alerts::get_active_alerts(AlertsOptions{
-    route_ids: ["r", "b", "grn", "org", "brn", "p", "pink", "y"].iter().map(|s| s.to_string()).collect(),
+    route_ids: ["r", "blue", "grn", "org", "brn", "p", "pink", "y"].iter().map(|s| s.to_string()).collect(),
     active_only: Some(true),
     accessibility: Some(false),
     planned: Some(false),
@@ -27,12 +27,11 @@ async fn check(ctx: Context) {
   }).await;
   
   match alerts {
-    Ok(_list) => {
-      if _list.len() == 0 {
-        println!("No Alerts.");
-      } else {
-        println!("OK. {} Alerts.", _list.len());
-        for f in _list.iter() {
+    Ok(list) => {
+      if !list.is_empty() {
+        println!("Found {} alerts!", list.len());
+        let in_db = db::get_alerts_with_ids(data.db_url.clone(), list.iter().map(|f| f.id).collect()).await;
+        for f in &list {
           dbg!(f);
         }
       }
@@ -46,12 +45,12 @@ async fn check(ctx: Context) {
 }
 
 async fn send_alert(ctx: Context, msg: String) {
-  let guilds = match db::get_guilds(std::env::var("DATABASE_URL").unwrap().to_string()).await {
+  let guilds = match db::get_subscribed_guilds(std::env::var("DATABASE_URL").unwrap().to_string()).await {
     Ok(val) => {
-      for guild in val.iter() {
+      for guild in &val {
         match guild.alert_channel {
           Some(chan) => {
-            ChannelId::from(chan as u64).send_message(ctx.http.clone(), CreateMessage::new().content("Test")).await;
+            let msg = ChannelId::from(chan as u64).send_message(ctx.http.clone(), CreateMessage::new().content("Test")).await;
           },
           None => {},
         };

@@ -97,12 +97,14 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
           train_number: prd.run_number
         }
       }).collect();
+      let now = std::time::Instant::now();
       let png_data = arrivaldisplay::render_doc(
         &arrivaldisplay::train(
           format!("Upcoming Arrivals for {}", station.name.clone().unwrap_or_else(|| format!("Station ID {}", station.id))),
           &arrivals[0..8.min(arrivals.len())]));
       match png_data {
         Ok(data) => {
+          println!("Elapsed: {:.2?}", now.elapsed());
           CreateInteractionResponseMessage::new()
             .content(format!("Arrival Board Generated <t:{}:R>", chrono::Local::now().timestamp()))
             .embed(CreateEmbed::new()
@@ -143,5 +145,5 @@ pub fn register() -> CreateCommand {
     .add_option(station_name)
     .add_integration_type(serenity::all::InstallationContext::Guild)
     .add_integration_type(serenity::all::InstallationContext::User)
-    .description("Gets information about a given train.")
+    .description("Gets arrival information for a given station")
 }

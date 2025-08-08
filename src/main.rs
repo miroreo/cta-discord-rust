@@ -8,6 +8,7 @@ mod watcher;
 extern crate dotenv;
 
 use dotenv::dotenv;
+use env_logger::Logger;
 use serenity::all::{CommandOptionType, CreateAutocompleteResponse, CreateInteractionResponse, Interaction};
 use std::env;
 use std::sync::Arc;
@@ -41,7 +42,7 @@ struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
   async fn ready(&self, ctx: Context, r: Ready) {
-    println!("Connected as {}", r.user.name);
+    println!("Connected to Discord as {}", r.user.name);
 
     init_shared(&ctx).await;
     commands::initialize(ctx.clone()).await;
@@ -59,12 +60,14 @@ impl EventHandler for Handler {
   async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
     if let Interaction::Command(command) = interaction.clone() {
       // println!("Recieved command interaction: {command:#?}");
+
       let content = match command.data.name.as_str() {
         "ping" => Some(commands::ping::run(&command.data.options())),
         "route_name" => Some(commands::route_name::run(&ctx, &command.data.options()).await),
         "get_train" => Some(commands::get_train::run(&ctx, &command.data.options()).await),
         "bus" => Some(commands::bus::run(&ctx, &command.data.options()).await),
         "arrivals" => Some(commands::arrivals::run(&ctx, &command.data.options()).await),
+        "broadcast" => Some(commands::broadcast::run(&ctx, &command.data.options(), &interaction).await),
         _ => Some(CreateInteractionResponseMessage::new().content("not implemented yet.".to_string())),
       };
       // let content = match command.data.
@@ -76,6 +79,7 @@ impl EventHandler for Handler {
         }
       }
     }
+    // Check if it's one of the special cases where 
     if let Interaction::Component(component) = interaction.clone() {
       let content = 
         if component.data.custom_id.as_str().starts_with("bus_arrivals:select") {
@@ -112,8 +116,6 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
-  // #![warn(clippy::pedantic)]
-  // arrivaldisplay::m();
   dotenv().ok();
   let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 
@@ -132,7 +134,8 @@ async fn main() {
 }
 
 async fn init_shared(ctx: &Context) {
-  println!("Initializing Shared Data.");
+  println!("Initializing shared data.");
+  
   // let ctaTT = cta::traintracker::TrainTracker::new();
   let initial_cta_shared = CTASharedData {
     bustracker: cta::bustracker::BusTracker::new(
@@ -152,8 +155,6 @@ async fn init_shared(ctx: &Context) {
     //   ).await
     //   .expect("Couldn't connect to database.")
   };
-  db::get_guilds(initial_cta_shared.db_url.clone()).await;
-  db::get_value(initial_cta_shared.db_url.clone(), "last_alert_id").await;
   let mut data = ctx.data.write().await;
   data.insert::<CTAShared>(Arc::new(initial_cta_shared));
   println!("Initialized Shared Data.");
