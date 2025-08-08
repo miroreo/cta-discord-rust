@@ -1,3 +1,10 @@
 /target
 .env
 google_transit.zip
+/.s.PGSQL*
+/.direnv
+/.db
+/.data
+/.direnv
+/db.log
+/result
