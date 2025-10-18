@@ -1,5 +1,5 @@
 use gtfs_structures::{Gtfs};
-use std::{env, fs};
+use std::{env, fs, path::Path};
 
 static GTFS_URL: &str = "https://www.transitchicago.com/downloads/sch_data/google_transit.zip";
 static DOCKER_GTFS_PATH: &str = "/data/google_transit.zip";
@@ -7,60 +7,125 @@ static DOCKER_GTFS_PATH: &str = "/data/google_transit.zip";
 #[derive(Default)]
 pub struct CtaGTFS {
   pub gtfs_data: Gtfs,
+  cache_dir: Option<String>
 }
 
 impl CtaGTFS {
-  pub async fn new() -> Self {
+  pub async fn new() -> Self {    
+    let cache_directory = env::var("CACHE_DIRECTORY");
+    // check if the cache directory is set and has full read-write permissions
+    let has_cache_dir = match cache_directory.clone() {
+      Ok(val) => {
+        let path = Path::new(val.as_str());
+        println!("Found CACHE_DIRECTORY of {val}. Checking permissions...");
+        let has_read_write = match fs::metadata(path) {
+          Ok(data) => {
+            let permissions = data.permissions();
+            if permissions.readonly() {
+              println!("Cache Directory '{val}' does not have write permission.");
+              false
+            } else {
+              println!("Cache Directory '{val}' has write permission.");
+              true
+            }
+          }
+          Err(e) => {
+            println!("Error getting metadata for Cache Directory: {e}");
+            false
+          }
+        };
+        has_read_write
+      }
+      Err(e) => {
+        println!("Cache directory not set. Not caching GTFS data.");
+        false
+      }
+    };
+    let has_cached_data = if has_cache_dir {
+      let dir = cache_directory.clone().unwrap();
+        let data_loc = format!("{dir}/google_transit.zip");
+        let data_path = Path::new(&data_loc);
+        match fs::exists(data_path) {
+          Ok(exists_val) => {
+            if exists_val {
+              println!("Found cached data.");
+            }
+            exists_val
+          }
+          Err(e) => {
+            println!("Could not find cached data.");
+            false
+          }
+        }
+    } else { false };
+
+    if has_cached_data {
+      return Self {
+        gtfs_data: Self::load_from_cache(&cache_directory.clone().unwrap()).await,
+        cache_dir: Some(cache_directory.unwrap().clone())
+      }
+    } else if has_cache_dir {
+      return Self {
+        gtfs_data: Self::cache_from_web(&cache_directory.clone().unwrap()).await,
+        cache_dir: Some(cache_directory.unwrap().clone())
+      }
+    }
+    Self {
+      gtfs_data: Self::load_from_web().await,
+      cache_dir: None
+    }
+  }
+  
+  async fn load_from_web() -> Gtfs {
     let reader = gtfs_structures::GtfsReader::default()
       .read_stop_times(false)
       .read_shapes(false)
       .unkown_enum_as_default(true)
       .trim_fields(true);
-  
-    match env::var("DEVELOPMENT") {
-      Ok(val) => {
-        if val.eq("1") {
-          println!("Detected Development Environment. Using local GTFS data.");
-          // new_self.gtfs_data = 
-          println!("GTFS data loaded.");
-          return Self {
-            gtfs_data: reader.read_from_path("./google_transit.zip").expect("Could not find valid GTFS data at ./google_transit.zip")
-          };
+    reader.read_from_url_async(GTFS_URL).await.expect("Error downloading GTFS data. ")
+  }
+  async fn cache_from_web(cache_directory: &str) -> Gtfs {
+    let reader = gtfs_structures::GtfsReader::default()
+      .read_stop_times(false)
+      .read_shapes(false)
+      .unkown_enum_as_default(true)
+      .trim_fields(true);
+    let path = format!("{cache_directory}/google_transit.zip");
+    let resp = reqwest::get(GTFS_URL).await.expect("GTFS Caching request failed");
+    let body = resp.bytes().await.expect("GTFS response body invalid");
+    // let mut out = std::fs::OpenOptions::new().write(true).truncate(true).open(path.clone())
+    // std::io::copy(&mut body.as_bytes(), &mut out).expect("Failed to copy GTFS content to cache");
+    fs::write(path.clone(), body).expect("Error overwriting GTFS data.");
+    reader.read_from_path(path).expect("Could not load GTFS data.")
+  }
+  async fn load_from_cache(cache_directory: &str) -> Gtfs {
+    let reader = gtfs_structures::GtfsReader::default()
+      .read_stop_times(false)
+      .read_shapes(false)
+      .unkown_enum_as_default(true)
+      .trim_fields(true);
+    let cached_data_loc = format!("{}/google_transit.zip", cache_directory);
+      match reader.read_from_path(cached_data_loc) {
+        Ok(data) => {
+          data
+        }
+        Err(e) => {
+
+          println!("Invalid GTFS data encountered. Refreshing the cache.");
+          Self::cache_from_web(cache_directory).await
         }
       }
-      Err(e) => {
-        println!("Error in GTFS development detection. {}", e);
-      }
-    }
-    match fs::exists(DOCKER_GTFS_PATH) {
-      Ok(true) => {
-        println!("GTFS data found in docker image. Loading data now.");
-        return Self {
-          gtfs_data: reader.read_from_path(DOCKER_GTFS_PATH).expect("Could not find valid GTFS data in the Docker image.")
-        };
-      }
-      Ok(false) => {
-  
-      }
-      Err(err) => {
-        println!("Error detecting docker GTFS: {err}")
-      }
-    }
-    println!("Starting web GTFS Data Load.");
-
-    Self {
-      gtfs_data: gtfs_structures::GtfsReader::read_from_url_async(reader, GTFS_URL).await.expect("Error downloading GTFS data. ")
-    }
   }
   
-  pub async fn reload_gtfs() {
-    let path = if env::var("DEVELOPMENT").ok().eq(&Some("1".to_string())) { "./google_transit.zip" } else {"/data/google_transit.zip"};
-    println!("GTFS data reload has been requested. App will restart.");
-    let resp = reqwest::get(GTFS_URL).await.expect("request failed");
-    let body = resp.text().await.expect("body invalid");
-    let mut out = std::fs::OpenOptions::new().write(true).truncate(true).open(path).expect("Could not get gtfs file to overwrite.");
-    std::io::copy(&mut body.as_bytes(), &mut out).expect("failed to copy content");
-    panic!("exiting to refresh GTFS data loaded.");
+  pub async fn reload_gtfs(&self) {
+    match self.cache_dir.clone() {
+      Some(dir) => {
+        Self::cache_from_web(&dir).await;
+      }
+      None => {
+        println!("Not attempting to reload cache: Cache Directory does not exist.");
+      }
+    }
   }
 
   pub fn get_route_name(&self, id: &str) -> std::string::String {
@@ -87,6 +152,7 @@ impl CtaGTFS {
     // load_gtfs().await;
     self.gtfs_data.get_stop(&id.to_string()).ok()?.clone().name
   }
+
 }
 
 

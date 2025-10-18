@@ -33,7 +33,7 @@ rec {
   #
 
   rootCrate = rec {
-    packageId = "cta-discord-rust";
+    packageId = "cta-discord";
 
     # Use this attribute to refer to the derivation building your root crate package.
     # You can override the features with rootCrate.build.override { features = [ "default" "feature1" ... ]; }.
@@ -49,10 +49,10 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "cta-discord-rust" = rec {
-      packageId = "cta-discord-rust";
+    "cta-discord" = rec {
+      packageId = "cta-discord";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "cta-discord-rust";
+        packageId = "cta-discord";
       };
 
       # Debug support which might change between releases.
@@ -1603,13 +1603,13 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
-      "cta-discord-rust" = rec {
-        crateName = "cta-discord-rust";
+      "cta-discord" = rec {
+        crateName = "cta-discord";
         version = "0.1.0";
         edition = "2021";
         crateBin = [
           {
-            name = "cta-discord-rust";
+            name = "cta-discord";
             path = "src/main.rs";
             requiredFeatures = [ ];
           }
@@ -1700,7 +1700,7 @@ rec {
           {
             name = "sqlx";
             packageId = "sqlx";
-            features = [ "runtime-tokio" "postgres" ];
+            features = [ "runtime-tokio" "postgres" "sqlx-macros" ];
           }
           {
             name = "svg";

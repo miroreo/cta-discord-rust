@@ -41,6 +41,10 @@
             value = "./.cache";
           }
           {
+            name = "PKG_CONFIG_PATH";
+            value = "${pkgs.openssl.dev}/lib/pkgconfig";
+          }
+          {
             name = "RUST_SRC_PATH";
             value = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
           }

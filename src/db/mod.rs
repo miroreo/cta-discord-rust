@@ -3,10 +3,9 @@ use sqlx::{Connection, Executor, FromRow, PgConnection, Postgres};
 #[derive(sqlx::FromRow, Debug)]
 pub struct DBAlert {
     pub alert_id: i32,
-    pub headline: Option<String>,
-    pub short_description: Option<String>,
-    pub guid: Option<String>,
-    pub published_to: Option<i32>,
+    pub headline: String,
+    pub short_description: String,
+    pub published_to: i32,
 }
 
 #[derive(sqlx::FromRow, Debug)]

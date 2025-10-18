@@ -5,7 +5,7 @@ use chrono::DateTime;
 use serenity::all::{ChannelId, Context, CreateMessage};
 use sqlx::{Executor, Postgres};
 
-use crate::{cta::{self, alerts::{AlertsError, AlertsOptions, DateOrDateTime}}, db, CTAShared};
+use crate::{cta::{self, alerts::{Alert, AlertsError, AlertsOptions, DateOrDateTime}}, db::{self, DBAlert}, CTAShared};
 
 pub async fn watch(ctx: Context) {
     static INTERVAL_SECS: u64 = 10;
@@ -31,9 +31,25 @@ async fn check(ctx: Context) {
         Ok(list) => {
             if !list.is_empty() {
                 println!("Found {} alerts!", list.len());
-        let in_db = db::get_alerts_with_ids(&data.db, list.iter().map(|f| f.id).collect()).await;
+
+                let in_db = db::get_alerts_with_ids(&data.db, list.iter().map(|f| f.id).collect()).await;
                 for f in &list {
                     dbg!(f);
+                }
+                match in_db {
+                    Ok(val) => {
+                        for alert in val {
+                            match list.iter().find(|x| x.id == alert.alert_id) {
+                                Some(a) => {
+                                    // if should_update(a.clone(), alert)
+                                }
+                                None => {}
+                            };
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error getting alerts in database: {e}");
+                    }
                 }
             }
     },
@@ -45,6 +61,13 @@ async fn check(ctx: Context) {
     // dbg!(alerts.len());
 }
 
+// fn compare 
+fn should_update(api_alert: Alert, db_alert: DBAlert) -> bool {
+    if api_alert.id != db_alert.alert_id { return false };
+    if api_alert.headline  != db_alert.headline { return true};
+    if api_alert.short_description != db_alert.short_description { return true };
+    false
+}
 async fn send_alert(ctx: Context, db: impl Executor<'_, Database = Postgres>, msg: String) {
     let guilds = match db::get_subscribed_guilds(db).await {
         Ok(val) => {
