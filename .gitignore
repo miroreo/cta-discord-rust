@@ -6,5 +6,6 @@ google_transit.zip
 /.db
 /.data
 /.direnv
+/.cache
 /db.log
 /result

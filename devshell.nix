@@ -10,12 +10,20 @@
   config.perSystem = {pkgs, ...}:
     with pkgs; let
       deps = [
-        openssl
-        pandoc
-        pkg-config
         postgresql_16
+        rustc
+        cargo
+        rustfmt
+        rust-analyzer
+        clippy
+        openssl
+        pkg-config
+        mold
+        clang
       ];
+
     in {
+
       config.devshells.default = {
         imports = [
           "${inputs.devshell}/extra/language/c.nix"
@@ -29,8 +37,16 @@
             value = lib.makeLibraryPath deps;
           }
           {
-            name = "PKG_CONFIG_PATH";
-            value = "${pkgs.openssl.dev}/lib/pkgconfig";
+            name = "CACHE_DIRECTORY";
+            value = "./.cache";
+          }
+          {
+            name = "RUST_SRC_PATH";
+            value = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+          }
+          {
+            name = "RUST_BACKTRACE";
+            value = 1;
           }
         ];
 
@@ -43,6 +59,10 @@
             command = ''
               initdb -D .db;
             '';
+          }
+          {
+            name = "database:sh";
+            command = "psql -h `pwd` -d cta-discord";
           }
         ];
 
