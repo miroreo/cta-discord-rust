@@ -16,6 +16,8 @@ pub enum AlertsError {
   ParseError(#[from] serde_json::Error),
   #[error("Alerts API provided invalid data")]
   DataError,
+  #[error("Database provided invalid data")]
+  DataBaseError,
   #[error("There are no active alerts.")]
   NoAlerts
 }
@@ -84,12 +86,24 @@ pub struct Alert {
 }
 
 #[serde(untagged)]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum DateOrDateTime {
   DateTime(NaiveDateTime),
   Date(NaiveDate)
 }
-#[derive(Deserialize, Debug)]
+impl std::fmt::Display for DateOrDateTime {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      DateOrDateTime::DateTime(naive_date_time) => {
+        write!(f, "DateTime {}", naive_date_time.to_string())
+      },
+      DateOrDateTime::Date(naive_date) => {
+        write!(f, "Date {}", naive_date.to_string())
+      },
+    }
+  }
+}
+#[derive(Deserialize, Serialize, Debug)]
 pub struct CDATA<I> {
   #[serde(rename="#cdata-section")]
   inner: I
@@ -134,8 +148,8 @@ impl<'de> Deserialize<'de> for ImpactedService {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
-struct Service {
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Service {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename="ServiceType")]
   pub stype: ServiceType,
@@ -153,7 +167,7 @@ struct Service {
   // #[serde(flatten)]
   pub url: CDATA<String>,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum ServiceType {
   SystemWide,
   TrainRoute,
@@ -172,6 +186,27 @@ impl FromStr for ServiceType {
     }
   }
 }
+impl std::fmt::Display for ServiceType {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let s = match self {
+      ServiceType::SystemWide => "X".to_string(),
+      ServiceType::TrainRoute => "R".to_string(),
+      ServiceType::BusRoute => "B".to_string(),
+      ServiceType::TrainStation => "T".to_string(),
+    };
+    write!(f, "{}", s)
+  }
+}
+// impl ToString for ServiceType {
+//   fn to_string(&self) -> String {
+//     match self {
+//       ServiceType::SystemWide => "X".to_string(),
+//       ServiceType::TrainRoute => "R".to_string(),
+//       ServiceType::BusRoute => "B".to_string(),
+//       ServiceType::TrainStation => "T".to_string(),
+//     }
+//   }
+// }
 
 fn yes() -> bool { true }
 #[derive(Serialize, Debug, Default)]

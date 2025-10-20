@@ -1,10 +1,22 @@
+use serde::{Deserialize, Serialize};
 use sqlx::{Connection, Executor, FromRow, PgConnection, Postgres};
+use sqlx::types::Json;
 
-#[derive(sqlx::FromRow, Debug)]
+use crate::cta::alerts::{DateOrDateTime, ImpactedService, Service};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct DBAlert {
     pub alert_id: i32,
     pub headline: String,
     pub short_description: String,
+    pub full_description: String,
+    pub severity_score: i32,
+    pub severity_color: String,
+    pub impact: String,
+    pub tbd: bool,
+    pub major_alert: bool,
+    pub alert_url: String,
+    pub impacted_services: Vec<sqlx::types::Json<Service>>,
     pub published_to: i32,
 }
 
@@ -47,7 +59,11 @@ pub async fn get_alerts_with_ids(
 ) -> Result<Vec<DBAlert>, sqlx::Error> {
     sqlx::query_as!(
         DBAlert,
-        "SELECT * FROM alert_history WHERE alert_id = ANY($1);",
+        "SELECT 
+            impacted_services AS \"impacted_services: Vec<Json<Service>>\",
+            headline, short_description, full_description, severity_score, severity_color, impact, tbd, major_alert, alert_url, alert_id, published_to
+            FROM current_alerts 
+            WHERE alert_id = ANY($1);",
         &ids
     )
     .fetch_all(db)
