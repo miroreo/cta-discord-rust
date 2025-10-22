@@ -73,6 +73,42 @@ pub async fn handle(ctx: &Context, interaction: &CommandInteraction) -> CreateIn
       }
       return CreateInteractionResponse::Autocomplete(CreateAutocompleteResponse::new());
     }
+    CommandData {
+      name: command_name,
+      kind: CommandType::ChatInput,
+      options: opts,
+      ..
+    } if command_name == "alerts" => {
+      if let Some(CommandDataOption {
+        value: CommandDataOptionValue::SubCommand(sub_data),
+        ..
+      }) = opts.first()
+      {
+        if let Some(CommandDataOption {
+          name: opt_name,
+          value:
+            CommandDataOptionValue::Autocomplete {
+              kind: CommandOptionType::String,
+              value: search_string,
+            },
+          ..
+        }) = sub_data.first()
+        {
+          if opt_name.as_str() == "route_ids" {
+            return CreateInteractionResponse::Autocomplete(
+              CreateAutocompleteResponse::new().set_choices(
+                search_route_ids(ctx, search_string)
+                  .await
+                  .iter()
+                  .map(|res| AutocompleteChoice::new(res, res.clone()))
+                  .collect(),
+              ),
+            );
+          }
+        }
+      }
+      return CreateInteractionResponse::Autocomplete(CreateAutocompleteResponse::new());
+    }
     _ => {
       println!("Unknown autocomplete command: {}", interaction.data.name);
     }
@@ -156,6 +192,34 @@ async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
     .collect::<Vec<(String, i64)>>();
 
   scored_suggestions.dedup_by(|a, b| a.0.eq(&b.0));
+  scored_suggestions.retain(|(_, score)| *score != 0);
+  scored_suggestions.sort_by_key(|(_, score)| *score);
+  scored_suggestions.reverse();
+  scored_suggestions[0..25.min(scored_suggestions.len())]
+    .iter()
+    .map(|(val, _)| val.clone())
+    .collect()
+}
+
+async fn search_route_ids(ctx: &Context, search: &str) -> Vec<String> {
+  let data = ctx.data.read().await;
+  let data = data.get::<CTAShared>().expect("no shared data");
+  let gtfs = &data.gtfs;
+  let matcher = SkimMatcherV2::default();
+
+  let mut scored_suggestions: Vec<(String, i64)> = gtfs
+    .gtfs_data
+    .routes
+    .keys()
+    .into_iter()
+    .map(|k| {
+      (
+        k.clone(),
+        matcher.fuzzy_match(k, search).unwrap_or_default(),
+      )
+    })
+    .collect::<Vec<(String, i64)>>();
+
   scored_suggestions.retain(|(_, score)| *score != 0);
   scored_suggestions.sort_by_key(|(_, score)| *score);
   scored_suggestions.reverse();

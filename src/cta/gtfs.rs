@@ -134,6 +134,15 @@ impl CtaGTFS {
     }
   }
 
+  pub fn route_ids(&self) -> Vec<String> {
+    self
+      .gtfs_data
+      .routes
+      .keys()
+      .map(|r| r.to_string())
+      .collect()
+  }
+
   pub fn get_route_name(&self, id: &str) -> std::string::String {
     // load_gtfs().await;
     self

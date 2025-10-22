@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \n            impacted_services AS \"impacted_services: Vec<Json<Service>>\",\n            headline, short_description, full_description, severity_score, severity_color, impact, tbd, major_alert, alert_url, alert_id, published_to\n            FROM current_alerts \n            WHERE alert_id = ANY($1);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "impacted_services: Vec<Json<Service>>",
+        "type_info": "JsonbArray"
+      },
+      {
+        "ordinal": 1,
+        "name": "headline",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "short_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "full_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "severity_score",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "severity_color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "impact",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "tbd",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "major_alert",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "alert_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "alert_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "published_to",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b6f78ce55f8bd99708c6e260c693e00492ef84bbae6c278a76211a07d353378e"
+}

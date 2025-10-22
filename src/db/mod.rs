@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use sqlx::{Connection, Executor, FromRow, PgConnection, Postgres};
 
-use crate::cta::alerts::{DateOrDateTime, ImpactedService, Service};
+use crate::cta::alerts::{Alert, DateOrDateTime, ImpactedService, Service};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DBAlert {
@@ -55,7 +55,7 @@ pub async fn get_subscribed_guilds(
 
 pub async fn get_alerts_with_ids(
   db: impl Executor<'_, Database = Postgres>,
-  ids: Vec<i32>,
+  ids: &[i32],
 ) -> Result<Vec<DBAlert>, sqlx::Error> {
   sqlx::query_as!(
         DBAlert,
@@ -68,6 +68,21 @@ pub async fn get_alerts_with_ids(
     )
     .fetch_all(db)
     .await
+}
+pub async fn add_alert(
+  db: impl Executor<'_, Database = Postgres>,
+  alert: Alert,
+  publish_count: &i32,
+) -> Result<(), sqlx::Error>{
+  let impacted_services_value = alert.impacted_services.impacted_services.iter().map(|s| serde_json::to_value(s).unwrap()).collect::<Vec<_>>();
+  let result = sqlx::query!(
+    "INSERT INTO 
+      current_alerts(alert_id, headline, short_description, full_description, severity_score, severity_color, impact, tbd, major_alert, alert_url, impacted_services, published_to)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);", alert.id, alert.headline, alert.short_description, alert.full_description.inner, alert.severity_score, alert.severity_color, alert.impact, alert.tbd, alert.major_alert, alert.alert_url.inner, &impacted_services_value, publish_count
+  ).execute(db)
+  .await?;
+  println!("Rows affected: {}", result.rows_affected());
+  Ok(())
 }
 
 pub async fn get_value(db: impl Executor<'_, Database = Postgres>, key: &str) {

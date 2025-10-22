@@ -4,6 +4,7 @@ use serenity::all::Command;
 use serenity::all::Context;
 use serenity::all::Guild;
 use serenity::all::GuildId;
+pub mod alerts;
 pub mod arrivals;
 pub mod autocomplete;
 pub mod broadcast;
@@ -19,6 +20,7 @@ pub async fn initialize(context: Context) {
   if let Err(why) = Command::set_global_commands(
     &context.http,
     vec![
+      alerts::register(),
       ping::register(),
       route_name::register(),
       get_train::register(),

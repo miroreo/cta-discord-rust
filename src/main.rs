@@ -72,6 +72,7 @@ impl EventHandler for Handler {
         "broadcast" => {
           Some(commands::broadcast::run(&ctx, &command.data.options(), &interaction).await)
         }
+        "alerts" => Some(commands::alerts::run(&ctx, &command.data.options()).await),
         _ => {
           Some(CreateInteractionResponseMessage::new().content("not implemented yet.".to_string()))
         }

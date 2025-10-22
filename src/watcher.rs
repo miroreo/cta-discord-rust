@@ -6,6 +6,7 @@ use serenity::all::{ChannelId, Context, CreateMessage};
 use sqlx::{Executor, Postgres};
 
 use crate::{
+  commands::alerts,
   cta::{
     self,
     alerts::{Alert, AlertsError, AlertsOptions, DateOrDateTime},
@@ -25,7 +26,7 @@ pub async fn watch(ctx: Context) {
 async fn check(ctx: Context) {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
-  let alerts = cta::alerts::get_active_alerts(AlertsOptions {
+  let alerts = cta::alerts::get_alerts(AlertsOptions {
     route_ids: ["r", "blue", "grn", "org", "brn", "p", "pink", "y"]
       .iter()
       .map(|s| s.to_string())
@@ -43,7 +44,8 @@ async fn check(ctx: Context) {
       if !list.is_empty() {
         println!("Found {} alerts!", list.len());
 
-        let in_db = db::get_alerts_with_ids(&data.db, list.iter().map(|f| f.id).collect()).await;
+        let in_db =
+          db::get_alerts_with_ids(&data.db, &list.iter().map(|f| f.id).collect::<Vec<_>>()).await;
         for f in &list {
           dbg!(f);
         }
@@ -72,17 +74,30 @@ async fn check(ctx: Context) {
   // dbg!(alerts.len());
 }
 
+async fn find_new(ctx: &Context, alerts: Vec<Alert>) -> Result<Vec<Alert>, sqlx::Error> {
+  let data = ctx.data.read().await;
+  let data = data.get::<CTAShared>().expect("no shared data");
+  let db_alerts =
+    db::get_alerts_with_ids(&data.db, &alerts.iter().map(|a| a.id).collect::<Vec<_>>()).await?;
+  Ok(
+    alerts
+      .iter()
+      .filter(|a| !db_alerts.iter().any(|dba| a.id == dba.alert_id))
+      .cloned()
+      .collect(),
+  )
+}
 // fn compare
 fn should_update(api_alert: Alert, db_alert: DBAlert) -> bool {
   if api_alert.id != db_alert.alert_id {
     return false;
-  };
+  }
   if api_alert.headline != db_alert.headline {
     return true;
-  };
+  }
   if api_alert.short_description != db_alert.short_description {
     return true;
-  };
+  }
   false
 }
 async fn send_alert(ctx: Context, db: impl Executor<'_, Database = Postgres>, msg: String) {

@@ -5,6 +5,7 @@ use chrono::{Date, NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde, serde_as, DisplayFromStr};
+use sqlx::{types::Json};
 use thiserror::Error;
 
 const ALERTS_URL: &str = "https://www.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON";
@@ -16,21 +17,19 @@ pub enum AlertsError {
   ParseError(#[from] serde_json::Error),
   #[error("Alerts API provided invalid data")]
   DataError,
-  #[error("Database provided invalid data")]
-  DataBaseError,
   #[error("There are no active alerts.")]
   NoAlerts,
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct AlertsAPIResponse {
   #[serde(rename = "CTAAlerts")]
   alerts: CTAAlerts,
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct CTAAlerts {
   #[serde(rename = "TimeStamp")]
   timestamp: String,
@@ -44,7 +43,7 @@ struct CTAAlerts {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Alert {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename = "AlertId")]
@@ -68,9 +67,9 @@ pub struct Alert {
   // #[serde_as(as = "DisplayFromStr")]
   #[serde(rename = "EventStart")]
   pub event_start: DateOrDateTime,
-  #[serde_as(as = "Option<DisplayFromStr>")]
+  // #[serde_as(as = "Option<DisplayFromStr>")]
   #[serde(rename = "EventEnd")]
-  pub event_end: Option<NaiveDateTime>,
+  pub event_end: Option<DateOrDateTime>,
   #[serde(rename = "TBD")]
   #[serde(deserialize_with = "bool_from_string")]
   pub tbd: bool,
@@ -86,7 +85,7 @@ pub struct Alert {
 }
 
 #[serde(untagged)]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub enum DateOrDateTime {
   DateTime(NaiveDateTime),
   Date(NaiveDate),
@@ -103,10 +102,10 @@ impl std::fmt::Display for DateOrDateTime {
     }
   }
 }
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct CDATA<I> {
   #[serde(rename = "#cdata-section")]
-  inner: I,
+  pub inner: I,
 }
 
 impl<I> Deref for CDATA<I> {
@@ -117,7 +116,7 @@ impl<I> Deref for CDATA<I> {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ImpactedService {
   // #[serde(rename="Service")]
   pub impacted_services: Vec<Service>,
@@ -149,7 +148,7 @@ impl<'de> Deserialize<'de> for ImpactedService {
 }
 
 #[serde_as]
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Service {
   #[serde_as(as = "DisplayFromStr")]
   #[serde(rename = "ServiceType")]
@@ -168,7 +167,7 @@ pub struct Service {
   // #[serde(flatten)]
   pub url: CDATA<String>,
 }
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub enum ServiceType {
   SystemWide,
   TrainRoute,
@@ -228,7 +227,8 @@ pub struct AlertsOptions {
   #[serde(rename = "recentdays")]
   pub recent_days: Option<i32>,
 }
-pub async fn get_active_alerts(options: AlertsOptions) -> Result<Vec<Alert>, AlertsError> {
+
+pub async fn get_alerts(options: AlertsOptions) -> Result<Vec<Alert>, AlertsError> {
   let query_string =
     serde_structuredqs::to_string(&options).expect("Could not parse options for get_active_alerts");
   let response_text = reqwest::get(format!("{ALERTS_URL}&{query_string}"))
