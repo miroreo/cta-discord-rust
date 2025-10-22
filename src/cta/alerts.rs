@@ -1,11 +1,11 @@
 use std::{ops::Deref, str::FromStr};
 
+use crate::util::bool_from_string;
 use chrono::{Date, NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::{DisplayFromStr, serde, serde_as};
+use serde_with::{serde, serde_as, DisplayFromStr};
 use thiserror::Error;
-use crate::util::bool_from_string;
 
 const ALERTS_URL: &str = "https://www.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON";
 #[derive(Error, Debug)]
@@ -19,27 +19,27 @@ pub enum AlertsError {
   #[error("Database provided invalid data")]
   DataBaseError,
   #[error("There are no active alerts.")]
-  NoAlerts
+  NoAlerts,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
 struct AlertsAPIResponse {
-  #[serde(rename="CTAAlerts")]
+  #[serde(rename = "CTAAlerts")]
   alerts: CTAAlerts,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
 struct CTAAlerts {
-  #[serde(rename="TimeStamp")]
+  #[serde(rename = "TimeStamp")]
   timestamp: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="ErrorCode")]
+  #[serde(rename = "ErrorCode")]
   error_code: i32,
-  #[serde(rename="ErrorMessage")]
+  #[serde(rename = "ErrorMessage")]
   error_message: Option<String>,
-  #[serde(rename="Alert")]
+  #[serde(rename = "Alert")]
   alerts: Option<Vec<Alert>>,
 }
 
@@ -47,40 +47,40 @@ struct CTAAlerts {
 #[derive(Deserialize, Debug)]
 pub struct Alert {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="AlertId")]
+  #[serde(rename = "AlertId")]
   pub id: i32,
-  #[serde(rename="Headline")]
+  #[serde(rename = "Headline")]
   pub headline: String,
-  #[serde(rename="ShortDescription")]
+  #[serde(rename = "ShortDescription")]
   pub short_description: String,
-  #[serde(rename="FullDescription")]
+  #[serde(rename = "FullDescription")]
   // #[serde(flatten)]
   pub full_description: CDATA<String>,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="SeverityScore")]
+  #[serde(rename = "SeverityScore")]
   pub severity_score: i32,
-  #[serde(rename="SeverityColor")]
+  #[serde(rename = "SeverityColor")]
   pub severity_color: String,
-  #[serde(rename="SeverityCSS")]
+  #[serde(rename = "SeverityCSS")]
   pub severity_css: String,
-  #[serde(rename="Impact")]
+  #[serde(rename = "Impact")]
   pub impact: String,
   // #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="EventStart")]
+  #[serde(rename = "EventStart")]
   pub event_start: DateOrDateTime,
   #[serde_as(as = "Option<DisplayFromStr>")]
-  #[serde(rename="EventEnd")]
+  #[serde(rename = "EventEnd")]
   pub event_end: Option<NaiveDateTime>,
-  #[serde(rename="TBD")]
+  #[serde(rename = "TBD")]
   #[serde(deserialize_with = "bool_from_string")]
   pub tbd: bool,
-  #[serde(rename="MajorAlert")]
+  #[serde(rename = "MajorAlert")]
   #[serde(deserialize_with = "bool_from_string")]
   pub major_alert: bool,
-  #[serde(rename="AlertURL")]
+  #[serde(rename = "AlertURL")]
   // #[serde(flatten)]
   pub alert_url: CDATA<String>,
-  #[serde(rename="ImpactedService")]
+  #[serde(rename = "ImpactedService")]
   // #[serde(flatten)]
   pub impacted_services: ImpactedService,
 }
@@ -89,27 +89,27 @@ pub struct Alert {
 #[derive(Deserialize, Serialize, Debug)]
 pub enum DateOrDateTime {
   DateTime(NaiveDateTime),
-  Date(NaiveDate)
+  Date(NaiveDate),
 }
 impl std::fmt::Display for DateOrDateTime {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
       DateOrDateTime::DateTime(naive_date_time) => {
         write!(f, "DateTime {}", naive_date_time.to_string())
-      },
+      }
       DateOrDateTime::Date(naive_date) => {
         write!(f, "Date {}", naive_date.to_string())
-      },
+      }
     }
   }
 }
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CDATA<I> {
-  #[serde(rename="#cdata-section")]
-  inner: I
+  #[serde(rename = "#cdata-section")]
+  inner: I,
 }
 
-impl <I> Deref for CDATA<I> {
+impl<I> Deref for CDATA<I> {
   type Target = I;
 
   fn deref(&self) -> &Self::Target {
@@ -120,11 +120,12 @@ impl <I> Deref for CDATA<I> {
 #[derive(Debug)]
 pub struct ImpactedService {
   // #[serde(rename="Service")]
-  pub impacted_services: Vec<Service>
+  pub impacted_services: Vec<Service>,
 }
 impl<'de> Deserialize<'de> for ImpactedService {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: serde::Deserializer<'de> 
+  where
+    D: serde::Deserializer<'de>,
   {
     let value: Value = Deserialize::deserialize(deserializer)?;
 
@@ -132,14 +133,14 @@ impl<'de> Deserialize<'de> for ImpactedService {
       let children = serde_json::from_value::<Vec<Service>>(Value::Array(array.clone()))
         .map_err(serde::de::Error::custom)?;
       // dbg!(&children);
-      Ok(ImpactedService{
-        impacted_services: children
+      Ok(ImpactedService {
+        impacted_services: children,
       })
     } else if value.is_object() {
       let single = serde_json::from_value::<Service>(value["Service"].clone())
         .map_err(serde::de::Error::custom)?;
-      Ok(ImpactedService{
-        impacted_services: vec![single]
+      Ok(ImpactedService {
+        impacted_services: vec![single],
       })
     } else {
       Err(serde::de::Error::custom("Unexpected type"))
@@ -151,19 +152,19 @@ impl<'de> Deserialize<'de> for ImpactedService {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Service {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="ServiceType")]
+  #[serde(rename = "ServiceType")]
   pub stype: ServiceType,
-  #[serde(rename="ServiceTypeDescription")]
+  #[serde(rename = "ServiceTypeDescription")]
   pub stype_description: String,
-  #[serde(rename="ServiceId")]
+  #[serde(rename = "ServiceId")]
   pub id: String,
-  #[serde(rename="ServiceName")]
+  #[serde(rename = "ServiceName")]
   pub name: String,
-  #[serde(rename="ServiceBackColor")]
+  #[serde(rename = "ServiceBackColor")]
   pub background_color: String,
-  #[serde(rename="ServiceTextColor")]
+  #[serde(rename = "ServiceTextColor")]
   pub text_color: String,
-  #[serde(rename="ServiceURL")]
+  #[serde(rename = "ServiceURL")]
   // #[serde(flatten)]
   pub url: CDATA<String>,
 }
@@ -182,7 +183,7 @@ impl FromStr for ServiceType {
       "R" => Ok(Self::TrainRoute),
       "B" => Ok(Self::BusRoute),
       "T" => Ok(Self::TrainStation),
-      _ => Err(AlertsError::DataError)
+      _ => Err(AlertsError::DataError),
     }
   }
 }
@@ -208,25 +209,28 @@ impl std::fmt::Display for ServiceType {
 //   }
 // }
 
-fn yes() -> bool { true }
+fn yes() -> bool {
+  true
+}
 #[derive(Serialize, Debug, Default)]
 pub struct AlertsOptions {
-  #[serde(rename="activeonly")]
+  #[serde(rename = "activeonly")]
   #[serde(default)]
   pub active_only: Option<bool>,
-  #[serde(default="yes")]
+  #[serde(default = "yes")]
   pub accessibility: Option<bool>,
-  #[serde(default="yes")]
+  #[serde(default = "yes")]
   pub planned: Option<bool>,
-  #[serde(rename="routeid")]
+  #[serde(rename = "routeid")]
   pub route_ids: Vec<String>,
-  #[serde(rename="bystartdate")]
+  #[serde(rename = "bystartdate")]
   pub by_start_date: Option<NaiveDate>,
-  #[serde(rename="recentdays")]
+  #[serde(rename = "recentdays")]
   pub recent_days: Option<i32>,
 }
 pub async fn get_active_alerts(options: AlertsOptions) -> Result<Vec<Alert>, AlertsError> {
-  let query_string = serde_structuredqs::to_string(&options).expect("Could not parse options for get_active_alerts");
+  let query_string =
+    serde_structuredqs::to_string(&options).expect("Could not parse options for get_active_alerts");
   let response_text = reqwest::get(format!("{ALERTS_URL}&{query_string}"))
     .await?
     .text()
@@ -236,8 +240,8 @@ pub async fn get_active_alerts(options: AlertsOptions) -> Result<Vec<Alert>, Ale
   match response.alerts.alerts {
     Some(data) => Ok(data),
     None => match response.alerts.error_code {
-        50 | 25 => Ok(Vec::<Alert>::new()),
-        _ => Err(AlertsError::DataError),
+      50 | 25 => Ok(Vec::<Alert>::new()),
+      _ => Err(AlertsError::DataError),
     },
   }
 }

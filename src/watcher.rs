@@ -5,7 +5,14 @@ use chrono::DateTime;
 use serenity::all::{ChannelId, Context, CreateMessage};
 use sqlx::{Executor, Postgres};
 
-use crate::{cta::{self, alerts::{Alert, AlertsError, AlertsOptions, DateOrDateTime}}, db::{self, DBAlert}, CTAShared};
+use crate::{
+  cta::{
+    self,
+    alerts::{Alert, AlertsError, AlertsOptions, DateOrDateTime},
+  },
+  db::{self, DBAlert},
+  CTAShared,
+};
 
 pub async fn watch(ctx: Context) {
   static INTERVAL_SECS: u64 = 10;
@@ -18,14 +25,18 @@ pub async fn watch(ctx: Context) {
 async fn check(ctx: Context) {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
-  let alerts = cta::alerts::get_active_alerts(AlertsOptions{
-  route_ids: ["r", "blue", "grn", "org", "brn", "p", "pink", "y"].iter().map(|s| s.to_string()).collect(),
+  let alerts = cta::alerts::get_active_alerts(AlertsOptions {
+    route_ids: ["r", "blue", "grn", "org", "brn", "p", "pink", "y"]
+      .iter()
+      .map(|s| s.to_string())
+      .collect(),
     active_only: Some(true),
     accessibility: Some(false),
     planned: Some(true),
     by_start_date: None,
     recent_days: None,
-  }).await;
+  })
+  .await;
 
   match alerts {
     Ok(list) => {
@@ -52,7 +63,7 @@ async fn check(ctx: Context) {
           }
         }
       }
-  },
+    }
     Err(e) => {
       println!("Error: {e}");
     }
@@ -61,11 +72,17 @@ async fn check(ctx: Context) {
   // dbg!(alerts.len());
 }
 
-// fn compare 
+// fn compare
 fn should_update(api_alert: Alert, db_alert: DBAlert) -> bool {
-  if api_alert.id != db_alert.alert_id { return false };
-  if api_alert.headline  != db_alert.headline { return true};
-  if api_alert.short_description != db_alert.short_description { return true };
+  if api_alert.id != db_alert.alert_id {
+    return false;
+  };
+  if api_alert.headline != db_alert.headline {
+    return true;
+  };
+  if api_alert.short_description != db_alert.short_description {
+    return true;
+  };
   false
 }
 async fn send_alert(ctx: Context, db: impl Executor<'_, Database = Postgres>, msg: String) {
@@ -74,15 +91,15 @@ async fn send_alert(ctx: Context, db: impl Executor<'_, Database = Postgres>, ms
       for guild in &val {
         match guild.alert_channel {
           Some(chan) => {
-      let msg = ChannelId::from(chan as u64).send_message(ctx.http.clone(), CreateMessage::new().content("Test")).await;
-      },
-      None => {},
+            let msg = ChannelId::from(chan as u64)
+              .send_message(ctx.http.clone(), CreateMessage::new().content("Test"))
+              .await;
+          }
+          None => {}
         };
         // ctx.http.send_message(guild.alert_channel.unwrap().into(), vec![], "Test").await;
       }
-  },
-  Err(err) => {
-
     }
+    Err(err) => {}
   };
 }

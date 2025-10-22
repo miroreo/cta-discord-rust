@@ -1,10 +1,10 @@
 use super::traintracker;
+use super::traintracker::LRouteCode;
 use super::traintracker::LRouteName;
 use super::traintracker::TTRoute;
-use super::traintracker::LRouteCode;
 pub struct AnomalousTrain {
   anomaly_type: AnomalyType,
-  position: traintracker::TTPosition
+  position: traintracker::TTPosition,
 }
 pub enum AnomalyType {
   RunNumber,
@@ -19,78 +19,96 @@ pub async fn check_route(routes: Vec<TTRoute>) -> Vec<AnomalousTrain> {
 }
 
 fn check_run_numbers(route: &TTRoute) -> Vec<AnomalousTrain> {
-  route.trains.iter().filter_map(|train| {
-    match route.name {
+  route
+    .trains
+    .iter()
+    .filter_map(|train| match route.name {
       LRouteCode::Blue => {
         if !matches!(&train.run_number, 100..=299) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::Brn => {
         if !matches!(&train.run_number, 400..=499) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::G => {
         if !matches!(&train.run_number, 0..=99 | 600..=699) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::Org => {
         if !matches!(&train.run_number, 700..=799) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::P => {
         if !matches!(&train.run_number, 500..=589) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::Pink => {
         if !matches!(&train.run_number, 300..=399) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::Red => {
         if !matches!(&train.run_number, 800..=999) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
-      },
+        } else {
+          None
+        }
+      }
       LRouteCode::Y => {
         if !matches!(&train.run_number, 590..=599) {
-          Some(AnomalousTrain{
+          Some(AnomalousTrain {
             anomaly_type: AnomalyType::RunNumber,
-            position: train.clone()
+            position: train.clone(),
           })
-        } else { None }
+        } else {
+          None
+        }
       }
-    }
-  }).collect()
+    })
+    .collect()
 }
 
 // fn check_next_stations(route: &TTRoute) -> Vec<AnomalousTrain> {
 //   route.trains.iter().filter_map(|train| {
-    
+
 //   })
 // }

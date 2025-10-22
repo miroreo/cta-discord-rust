@@ -1,26 +1,26 @@
+use crate::util::bool_from_string;
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
-use serde_with::{DisplayFromStr, serde, serde_as};
 use reqwest::get;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde, serde_as, DisplayFromStr};
 use std::{result::Result, str::FromStr};
 use thiserror::Error;
-use crate::util::bool_from_string;
 
-#[derive(Deserialize,Debug)]
+#[derive(Deserialize, Debug)]
 struct TopLevelResponse<I> {
-  ctatt: I
+  ctatt: I,
 }
 
 #[serde_as]
-#[derive(Deserialize,Debug)]
+#[derive(Deserialize, Debug)]
 struct PositionTT {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="tmst")]
+  #[serde(rename = "tmst")]
   timestamp: chrono::NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="errCd")]
+  #[serde(rename = "errCd")]
   error_code: i32,
-  #[serde(rename="errNm")]
+  #[serde(rename = "errNm")]
   error_name: Option<String>,
   route: Vec<TTRoute>,
 }
@@ -28,9 +28,9 @@ struct PositionTT {
 #[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct TTRoute {
-  #[serde(rename="@name")]
+  #[serde(rename = "@name")]
   pub name: LRouteCode,
-  #[serde(rename="train")]
+  #[serde(rename = "train")]
   pub trains: Vec<TTPosition>,
 }
 
@@ -38,58 +38,58 @@ pub struct TTRoute {
 #[derive(Deserialize, Debug, Clone)]
 pub struct TTPosition {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="rn")]
+  #[serde(rename = "rn")]
   pub run_number: i32,
-  #[serde(rename="rt")]
+  #[serde(rename = "rt")]
   pub route: Option<LRouteCode>,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="destSt")]
+  #[serde(rename = "destSt")]
   pub destination_station: i32,
-  #[serde(rename="destNm")]
+  #[serde(rename = "destNm")]
   pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="trDr")]
+  #[serde(rename = "trDr")]
   pub train_direction: i8,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="nextStaId")]
+  #[serde(rename = "nextStaId")]
   pub next_station_id: i32,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="nextStpId")]
+  #[serde(rename = "nextStpId")]
   pub next_stop_id: i32,
-  #[serde(rename="nextStaNm")]
+  #[serde(rename = "nextStaNm")]
   pub next_station_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="prdt")]
+  #[serde(rename = "prdt")]
   pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="arrT")]
+  #[serde(rename = "arrT")]
   pub arrival_time: NaiveDateTime,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isApp")]
+  #[serde(rename = "isApp")]
   pub is_approaching: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isDly")]
+  #[serde(rename = "isDly")]
   pub is_delayed: bool,
   #[serde_as(as = "DisplayFromStr")]
   pub lat: f32,
   #[serde_as(as = "DisplayFromStr")]
   pub lon: f32,
   #[serde_as(as = "DisplayFromStr")]
-  pub heading: i32
+  pub heading: i32,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
 struct ArrivalsTT {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="tmst")]
+  #[serde(rename = "tmst")]
   timestamp: chrono::NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="errCd")]
+  #[serde(rename = "errCd")]
   error_code: i32,
-  #[serde(rename="errNm")]
+  #[serde(rename = "errNm")]
   error_name: Option<String>,
-  #[serde(rename="eta")]
+  #[serde(rename = "eta")]
   arrivals: Vec<TTArrival>,
 }
 
@@ -98,41 +98,41 @@ struct ArrivalsTT {
 #[derive(Deserialize, Debug)]
 pub struct TTArrival {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="rn")]
+  #[serde(rename = "rn")]
   pub run_number: i32,
-  #[serde(rename="rt")]
+  #[serde(rename = "rt")]
   pub route: LRouteCode,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="destSt")]
+  #[serde(rename = "destSt")]
   pub destination_station: i32,
-  #[serde(rename="destNm")]
+  #[serde(rename = "destNm")]
   pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="trDr")]
+  #[serde(rename = "trDr")]
   pub train_direction: i8,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="prdt")]
+  #[serde(rename = "prdt")]
   pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="arrT")]
+  #[serde(rename = "arrT")]
   pub arrival_time: NaiveDateTime,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isApp")]
+  #[serde(rename = "isApp")]
   pub is_approaching: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isSch")]
+  #[serde(rename = "isSch")]
   pub is_scheduled: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isDly")]
+  #[serde(rename = "isDly")]
   pub is_delayed: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isFlt")]
+  #[serde(rename = "isFlt")]
   pub is_faulted: bool,
-  #[serde(rename="lat")]
+  #[serde(rename = "lat")]
   pub latitude: Option<String>,
-  #[serde(rename="lon")]
+  #[serde(rename = "lon")]
   pub longitude: Option<String>,
-  pub heading: Option<String>
+  pub heading: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
@@ -144,27 +144,27 @@ pub enum LRouteCode {
   Pink,
   G,
   Org,
-  Brn
+  Brn,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum LRouteName {
-  #[serde(rename="Red Line")]
+  #[serde(rename = "Red Line")]
   Red,
-  #[serde(rename="Purple Line")]
+  #[serde(rename = "Purple Line")]
   P,
-  #[serde(rename="Yellow Line")]
+  #[serde(rename = "Yellow Line")]
   Y,
-  #[serde(rename="Blue Line")]
+  #[serde(rename = "Blue Line")]
   Blue,
-  #[serde(rename="Pink Line")]
+  #[serde(rename = "Pink Line")]
   Pink,
-  #[serde(rename="Green Line")]
+  #[serde(rename = "Green Line")]
   G,
-  #[serde(rename="Orange Line")]
+  #[serde(rename = "Orange Line")]
   Org,
-  #[serde(rename="Brown Line")]
-  Brn
+  #[serde(rename = "Brown Line")]
+  Brn,
 }
 
 impl From<LRouteCode> for LRouteName {
@@ -177,7 +177,7 @@ impl From<LRouteCode> for LRouteName {
       LRouteCode::Pink => LRouteName::Pink,
       LRouteCode::G => LRouteName::G,
       LRouteCode::Org => LRouteName::Org,
-      LRouteCode::Brn => LRouteName::Brn
+      LRouteCode::Brn => LRouteName::Brn,
     }
   }
 }
@@ -191,7 +191,7 @@ impl From<LRouteName> for LRouteCode {
       LRouteName::Pink => LRouteCode::Pink,
       LRouteName::G => LRouteCode::G,
       LRouteName::Org => LRouteCode::Org,
-      LRouteName::Brn => LRouteCode::Brn
+      LRouteName::Brn => LRouteCode::Brn,
     }
   }
 }
@@ -200,25 +200,25 @@ impl From<LRouteName> for LRouteCode {
 #[derive(Deserialize, Debug)]
 struct FollowTrainTT {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="tmst")]
+  #[serde(rename = "tmst")]
   timestamp: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="errCd")]
+  #[serde(rename = "errCd")]
   error_code: i32,
-  #[serde(rename="errNm")]
+  #[serde(rename = "errNm")]
   error_name: Option<String>,
   position: Position,
-  eta: Vec<TTFollowEta>
+  eta: Vec<TTFollowEta>,
 }
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
 pub struct Position {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="lat")]
+  #[serde(rename = "lat")]
   pub latitude: f32,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="lon")]
+  #[serde(rename = "lon")]
   pub longitude: f32,
   #[serde_as(as = "DisplayFromStr")]
   pub heading: i32,
@@ -229,43 +229,43 @@ pub struct Position {
 #[derive(Deserialize, Debug)]
 pub struct TTFollowEta {
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="staId")]
+  #[serde(rename = "staId")]
   pub station_id: i32,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="stpId")]
+  #[serde(rename = "stpId")]
   pub stop_id: i32,
-  #[serde(rename="staNm")]
+  #[serde(rename = "staNm")]
   pub station_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="rn")]
+  #[serde(rename = "rn")]
   pub run_number: i32,
-  #[serde(rename="rt")]
+  #[serde(rename = "rt")]
   pub route: LRouteName,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="destSt")]
+  #[serde(rename = "destSt")]
   pub destination_station: i32,
-  #[serde(rename="destNm")]
+  #[serde(rename = "destNm")]
   pub destination_name: String,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="trDr")]
+  #[serde(rename = "trDr")]
   pub train_direction: TrainDirection,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="prdt")]
+  #[serde(rename = "prdt")]
   pub prediction_time: NaiveDateTime,
   #[serde_as(as = "DisplayFromStr")]
-  #[serde(rename="arrT")]
+  #[serde(rename = "arrT")]
   pub arrival_time: NaiveDateTime,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isApp")]
+  #[serde(rename = "isApp")]
   pub is_approaching: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isSch")]
+  #[serde(rename = "isSch")]
   pub is_scheduled: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isDly")]
+  #[serde(rename = "isDly")]
   pub is_delayed: bool,
   #[serde(deserialize_with = "bool_from_string")]
-  #[serde(rename="isFlt")]
+  #[serde(rename = "isFlt")]
   pub is_faulted: bool,
 }
 
@@ -280,7 +280,7 @@ impl FromStr for TrainDirection {
     match s {
       "1" => Ok(TrainDirection::Northbound),
       "5" => Ok(TrainDirection::Southbound),
-      _ => Err(TrainTrackerError::DataError)
+      _ => Err(TrainTrackerError::DataError),
     }
   }
 }
@@ -305,7 +305,7 @@ pub struct ArrivalsParameters {
 #[serde(untagged)]
 pub enum MapOrStopID {
   MapID { mapid: i32 },
-  StopID { stpid: i32 }
+  StopID { stpid: i32 },
 }
 pub struct TrainTracker {
   token: String,
@@ -315,18 +315,32 @@ impl TrainTracker {
 
   pub fn new(token: &str) -> Self {
     Self {
-      token: token.to_string()
+      token: token.to_string(),
     }
   }
-  pub async fn follow_train(&self, train_number: i32) -> Result<Vec<TTFollowEta>, TrainTrackerError> {
-    let resp_text = get(format!("{}ttfollow.aspx?runnumber={train_number}&key={}&outputType=JSON", Self::BASE_URL, self.token))
-      .await?
-      .text()
-      .await?;
+  pub async fn follow_train(
+    &self,
+    train_number: i32,
+  ) -> Result<Vec<TTFollowEta>, TrainTrackerError> {
+    let resp_text = get(format!(
+      "{}ttfollow.aspx?runnumber={train_number}&key={}&outputType=JSON",
+      Self::BASE_URL,
+      self.token
+    ))
+    .await?
+    .text()
+    .await?;
     // let topLevel: TopLevelResponse<FollowTrainTT> = ;
-    Ok(serde_json::from_str::<TopLevelResponse<FollowTrainTT>>(&resp_text)?.ctatt.eta)
+    Ok(
+      serde_json::from_str::<TopLevelResponse<FollowTrainTT>>(&resp_text)?
+        .ctatt
+        .eta,
+    )
   }
-  pub async fn arrivals(&self, options: ArrivalsParameters) -> Result<Vec<TTArrival>, TrainTrackerError> {
+  pub async fn arrivals(
+    &self,
+    options: ArrivalsParameters,
+  ) -> Result<Vec<TTArrival>, TrainTrackerError> {
     let mut params: String = match options.id {
       MapOrStopID::MapID { mapid } => format!("mapid={mapid}"),
       MapOrStopID::StopID { stpid } => format!("stpid={stpid}"),
@@ -337,38 +351,55 @@ impl TrainTracker {
     if options.rt.is_some() {
       params = format!("{}&rt={}", params, options.rt.unwrap().as_str());
     }
-    let resp_text = get(format!("{}ttarrivals.aspx?{}&key={}&outputType=JSON", Self::BASE_URL, params, self.token))
-      .await?
-      .text()
-      .await?;
+    let resp_text = get(format!(
+      "{}ttarrivals.aspx?{}&key={}&outputType=JSON",
+      Self::BASE_URL,
+      params,
+      self.token
+    ))
+    .await?
+    .text()
+    .await?;
     // println!("{resp}", resp_text);
-    Ok(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?.ctatt.arrivals)
+    Ok(
+      serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&resp_text)?
+        .ctatt
+        .arrivals,
+    )
   }
 
   pub async fn positions(&self, rt: Vec<LRouteCode>) -> Result<Vec<TTRoute>, TrainTrackerError> {
-    let routes: String = rt.iter()
+    let routes: String = rt
+      .iter()
       .filter_map(|r| serde_json::ser::to_string(r).ok())
-      .fold(String::new(), |prev, r| 
-        format!("{prev}{r},"));
-    let resp_text = get(format!("{}ttpositions.aspx?rt={routes}&key={}&outputType=JSON", Self::BASE_URL, self.token))
-      .await?
-      .text()
-      .await?;
+      .fold(String::new(), |prev, r| format!("{prev}{r},"));
+    let resp_text = get(format!(
+      "{}ttpositions.aspx?rt={routes}&key={}&outputType=JSON",
+      Self::BASE_URL,
+      self.token
+    ))
+    .await?
+    .text()
+    .await?;
     // let topLevel: TopLevelResponse<FollowTrainTT> = ;
-    Ok(serde_json::from_str::<TopLevelResponse<PositionTT>>(&resp_text)?
-      .ctatt
-      .route)
+    Ok(
+      serde_json::from_str::<TopLevelResponse<PositionTT>>(&resp_text)?
+        .ctatt
+        .route,
+    )
   }
 }
 
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
+  // Note this useful idiom: importing names from outer (for mod tests) scope.
+  use super::*;
 
-    #[test]
-    fn test_parse_arrival() {
-        assert_eq!(serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(&"{ 
+  #[test]
+  fn test_parse_arrival() {
+    assert_eq!(
+      serde_json::from_str::<TopLevelResponse<ArrivalsTT>>(
+        &"{ 
     \"ctatt\":{ 
         \"tmst\":\"2015-04-30T20:23:53\",
         \"errCd\":\"0\",
@@ -397,16 +428,18 @@ mod tests {
            }
         ]
     }
-}")?.ctatt.arrivals, vec![Arrival{
-  
-}]);
-    }
+}"
+      )?
+      .ctatt
+      .arrivals,
+      vec![Arrival {}]
+    );
+  }
 
-    #[test]
-    fn test_bad_add() {
-        // This assert would fire and test will fail.
-        // Please note, that private functions can be tested too!
-        assert_eq!(bad_add(1, 2), 3);
-    }
+  #[test]
+  fn test_bad_add() {
+    // This assert would fire and test will fail.
+    // Please note, that private functions can be tested too!
+    assert_eq!(bad_add(1, 2), 3);
+  }
 }
-

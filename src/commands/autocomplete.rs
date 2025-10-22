@@ -1,6 +1,10 @@
-use serenity::all::{AutocompleteChoice, CommandData, CommandDataOption, CommandDataOptionValue, CommandInteraction, CommandOptionType, CommandType, Context, CreateAutocompleteResponse, CreateInteractionResponse, Interaction, ResolvedOption, ResolvedValue};
-use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
+use serenity::all::{
+  AutocompleteChoice, CommandData, CommandDataOption, CommandDataOptionValue, CommandInteraction,
+  CommandOptionType, CommandType, Context, CreateAutocompleteResponse, CreateInteractionResponse,
+  Interaction, ResolvedOption, ResolvedValue,
+};
 
 use crate::CTAShared;
 
@@ -13,25 +17,26 @@ pub async fn handle(ctx: &Context, interaction: &CommandInteraction) -> CreateIn
       ..
     } if command_name == "arrivals" => {
       if let Some(CommandDataOption {
-        value: CommandDataOptionValue::Autocomplete {
-          kind: CommandOptionType::String,
-          value: search_string
-        },
+        value:
+          CommandDataOptionValue::Autocomplete {
+            kind: CommandOptionType::String,
+            value: search_string,
+          },
         ..
-      }) = opts.first() {
+      }) = opts.first()
+      {
         return CreateInteractionResponse::Autocomplete(
-          CreateAutocompleteResponse::new()
-            .set_choices(
-              search_stations(ctx, search_string)
-                .await
-                .iter()
-                .map(|res| AutocompleteChoice::new(res, res.clone()))
-                .collect()
-            )
-          );
+          CreateAutocompleteResponse::new().set_choices(
+            search_stations(ctx, search_string)
+              .await
+              .iter()
+              .map(|res| AutocompleteChoice::new(res, res.clone()))
+              .collect(),
+          ),
+        );
       }
       // return CreateInteractionResponse::Autocomplete(stations(ctx, interaction).await);
-    },
+    }
     CommandData {
       name: command_name,
       kind: CommandType::ChatInput,
@@ -41,29 +46,33 @@ pub async fn handle(ctx: &Context, interaction: &CommandInteraction) -> CreateIn
       if let Some(CommandDataOption {
         value: CommandDataOptionValue::SubCommand(sub_data),
         ..
-      }) = opts.first() {
+      }) = opts.first()
+      {
         if let Some(CommandDataOption {
           name: opt_name,
-          value: CommandDataOptionValue::Autocomplete {
-            kind: CommandOptionType::String,
-            value: search_string,
-          },
+          value:
+            CommandDataOptionValue::Autocomplete {
+              kind: CommandOptionType::String,
+              value: search_string,
+            },
           ..
-        }) = sub_data.first() {
-          if opt_name.as_str() == "stop_name"{
+        }) = sub_data.first()
+        {
+          if opt_name.as_str() == "stop_name" {
             return CreateInteractionResponse::Autocomplete(
-              CreateAutocompleteResponse::new()
-                .set_choices(
-                  search_bus_stops(ctx, search_string)
-                    .await
-                    .iter()
-                    .map(|res| AutocompleteChoice::new(res, res.clone()))
-                    .collect()));
+              CreateAutocompleteResponse::new().set_choices(
+                search_bus_stops(ctx, search_string)
+                  .await
+                  .iter()
+                  .map(|res| AutocompleteChoice::new(res, res.clone()))
+                  .collect(),
+              ),
+            );
           }
         }
       }
       return CreateInteractionResponse::Autocomplete(CreateAutocompleteResponse::new());
-    },
+    }
     _ => {
       println!("Unknown autocomplete command: {}", interaction.data.name);
     }
@@ -80,7 +89,7 @@ pub async fn handle(ctx: &Context, interaction: &CommandInteraction) -> CreateIn
   //     //   .add_string_choice("Sox-36th", "Sox-36th")
   //     //   .add_string_choice("Sox-37th", "Sox-37th"))
   //     // interaction.create_response(ctx.http.clone(), CreateInteractionResponse::Autocomplete(arrivals_autocomplete(ctx, interaction).clone())).await;
-      
+
   //   // } else if interaction.data.name.as_str() == "bus" {
   //   //   CreateInteractionResponse::Autocomplete(())
   //   } else {
@@ -99,20 +108,29 @@ async fn search_stations(ctx: &Context, search: &str) -> Vec<String> {
   let gtfs = &data.gtfs;
   let matcher = SkimMatcherV2::default();
 
-  let mut scored_suggestions: Vec<(String, i64)> = gtfs.gtfs_data.stops.iter()
+  let mut scored_suggestions: Vec<(String, i64)> = gtfs
+    .gtfs_data
+    .stops
+    .iter()
     .filter(|stp| matches!(stp.0.clone().parse().unwrap_or(0), 40000..=49999))
     .map(|(_, stop)| {
       let name = stop.name.clone().unwrap_or_default();
-      (name.clone(), matcher.fuzzy_match(name.as_str(), search).unwrap_or_default())
-    }).collect::<Vec<(String, i64)>>();
+      (
+        name.clone(),
+        matcher
+          .fuzzy_match(name.as_str(), search)
+          .unwrap_or_default(),
+      )
+    })
+    .collect::<Vec<(String, i64)>>();
 
   scored_suggestions.retain(|(_, score)| *score != 0);
   scored_suggestions.sort_by_key(|(_, score)| *score);
   scored_suggestions.reverse();
-  scored_suggestions[0..25.min(scored_suggestions.len())].iter()
-    .map(|(val, _)| {
-      val.clone()
-    }).collect()
+  scored_suggestions[0..25.min(scored_suggestions.len())]
+    .iter()
+    .map(|(val, _)| val.clone())
+    .collect()
 }
 
 async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
@@ -121,32 +139,41 @@ async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
   let gtfs = &data.gtfs;
   let matcher = SkimMatcherV2::default();
 
-  let mut scored_suggestions: Vec<(String, i64)> = gtfs.gtfs_data.stops.iter()
+  let mut scored_suggestions: Vec<(String, i64)> = gtfs
+    .gtfs_data
+    .stops
+    .iter()
     .filter(|stp| matches!(stp.0.clone().parse().unwrap_or(0), 0..=39999))
     .map(|(_, stop)| {
       let name = stop.name.clone().unwrap_or_default();
-      (name.clone(), matcher.fuzzy_match(name.as_str(), search).unwrap_or_default())
-    }).collect::<Vec<(String, i64)>>();
+      (
+        name.clone(),
+        matcher
+          .fuzzy_match(name.as_str(), search)
+          .unwrap_or_default(),
+      )
+    })
+    .collect::<Vec<(String, i64)>>();
 
   scored_suggestions.dedup_by(|a, b| a.0.eq(&b.0));
   scored_suggestions.retain(|(_, score)| *score != 0);
   scored_suggestions.sort_by_key(|(_, score)| *score);
   scored_suggestions.reverse();
-  scored_suggestions[0..25.min(scored_suggestions.len())].iter()
-    .map(|(val, _)| {
-      val.clone()
-    }).collect()
+  scored_suggestions[0..25.min(scored_suggestions.len())]
+    .iter()
+    .map(|(val, _)| val.clone())
+    .collect()
 }
 // async fn stations(ctx: &Context, interaction: &CommandInteraction) -> CreateAutocompleteResponse {
-  
+
 //   // dbg!(interaction.data.options.first());
 //   if let Some(CommandDataOption {
-//     value: CommandDataOptionValue::Autocomplete { 
+//     value: CommandDataOptionValue::Autocomplete {
 //       kind: CommandOptionType::String,
 //       value: current_search }, ..
 //   }) = interaction.data.options.first() {
 //     // dbg!(current_search);
-    
+
 //     suggestions.retain(|(_, score)| *score != 0);
 //     suggestions.sort_by_key(|(val, score)| *score);
 //     suggestions.reverse();
@@ -158,7 +185,7 @@ async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
 //   else {
 //     CreateAutocompleteResponse::new()
 //   }
-  
+
 // }
 
 // async fn bus_stops(ctx: &Context, interaction: &CommandInteraction) -> CreateAutocompleteResponse {
@@ -181,7 +208,7 @@ async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
 //     })= sub.first() {
 //       // dbg!(current_search);
 //       let mut suggestions: Vec<(String, i64)> = gtfs.gtfs_data.stops.iter()
-//         .filter(|stp| 
+//         .filter(|stp|
 //           matches!(stp.0.clone().parse().unwrap_or(0), 0..=30000))
 //         .map(|(_, stop)| {
 //           let name = stop.name.clone().unwrap_or_default();
@@ -205,9 +232,9 @@ async fn search_bus_stops(ctx: &Context, search: &str) -> Vec<String> {
 //   }
 //   else {
 //     CreateAutocompleteResponse::new()
-//   }  
+//   }
 // }
 // // pub fn arrivals_autocomplete(ctx: Context, interaction: &CommandInteraction) -> CreateAutocompleteResponse {
 // //   println!("In Arrivals Autocomplete");
-  
+
 // // }

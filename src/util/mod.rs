@@ -1,5 +1,7 @@
-use serde::{de::{self, Unexpected}, Deserialize, Deserializer};
-
+use serde::{
+  de::{self, Unexpected},
+  Deserialize, Deserializer,
+};
 
 #[allow(clippy::cast_possible_truncation)]
 pub fn minutes_until(input: chrono::DateTime<chrono_tz::Tz>) -> i32 {
@@ -28,7 +30,7 @@ where
 {
   match String::deserialize(deserializer)?.as_ref() {
     "0" | "false" | "False" | "FALSE" => Ok(false),
-    "true" | "1" | "True" | "TRUE"=> Ok(true),
+    "true" | "1" | "True" | "TRUE" => Ok(true),
     other => Err(de::Error::invalid_value(
       Unexpected::Str(other),
       &"true or false",

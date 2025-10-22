@@ -1,8 +1,8 @@
 use serde::*;
 use serde_with::*;
 
-use std::sync::OnceLock;
 use reqwest::*;
+use std::sync::OnceLock;
 static stations_url: &str = "https://data.cityofchicago.org/resource/8pix-ypme.json";
 
 #[serde_as]
@@ -29,7 +29,7 @@ struct Stop {
   y: bool,
   pnk: bool,
   o: bool,
-  location: Location
+  location: Location,
 }
 
 #[serde_as]
@@ -50,23 +50,25 @@ enum Direction {
 }
 
 pub struct CtaStations {
-  stops: Vec<Stop>
+  stops: Vec<Stop>,
 }
 impl CtaStations {
   pub async fn new() -> Self {
     let resp_text = get(stations_url)
-    .await
+      .await
       .expect("Could not load stations data")
       .text()
-      .await.expect("Could not parse text of stations data");
+      .await
+      .expect("Could not parse text of stations data");
     Self {
-      stops: serde_json::from_str(&resp_text).expect("Could not parse station data.")
+      stops: serde_json::from_str(&resp_text).expect("Could not parse station data."),
     }
   }
   pub fn get_stop_name(&self, id: i32) -> Option<String> {
-    self.stops.iter().find(|p| {
-      p.map_id == id || p.stop_id == id
-    }).map(|s| s.station_descriptive_name.clone())
+    self
+      .stops
+      .iter()
+      .find(|p| p.map_id == id || p.stop_id == id)
+      .map(|s| s.station_descriptive_name.clone())
   }
 }
-
