@@ -1,11 +1,10 @@
 use std::{ops::Deref, str::FromStr};
 
 use crate::util::bool_from_string;
-use chrono::{Date, NaiveDate, NaiveDateTime};
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde, serde_as, DisplayFromStr};
-use sqlx::{types::Json};
 use thiserror::Error;
 
 const ALERTS_URL: &str = "https://www.transitchicago.com/api/1.0/alerts.aspx?outputType=JSON";

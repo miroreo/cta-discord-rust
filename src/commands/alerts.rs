@@ -1,14 +1,12 @@
 use chrono::NaiveTime;
 use gtfs_structures::RouteType;
 use serenity::all::{
-  Context, CreateCommandOption, CreateEmbed, CreateInteractionResponseMessage, Interaction,
-  ResolvedValue,
+  Context, CreateEmbed, CreateInteractionResponseMessage,
 };
 use serenity::builder::CreateCommand;
 use serenity::model::application::ResolvedOption;
 
-use crate::commands::bus;
-use crate::cta::alerts::{Alert, AlertsError, AlertsOptions};
+use crate::cta::alerts::{AlertsError, AlertsOptions};
 use crate::{cta, CTAShared};
 
 pub async fn run<'a>(

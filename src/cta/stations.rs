@@ -3,7 +3,7 @@ use serde_with::*;
 
 use reqwest::*;
 use std::sync::OnceLock;
-static stations_url: &str = "https://data.cityofchicago.org/resource/8pix-ypme.json";
+static STATIONS_URL: &str = "https://data.cityofchicago.org/resource/8pix-ypme.json";
 
 #[serde_as]
 #[derive(Deserialize, Debug)]
@@ -54,7 +54,7 @@ pub struct CtaStations {
 }
 impl CtaStations {
   pub async fn new() -> Self {
-    let resp_text = get(stations_url)
+    let resp_text = get(STATIONS_URL)
       .await
       .expect("Could not load stations data")
       .text()

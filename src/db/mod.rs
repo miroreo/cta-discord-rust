@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
-use sqlx::{Connection, Executor, FromRow, PgConnection, Postgres};
+use sqlx::{Executor, Postgres};
 
-use crate::cta::alerts::{Alert, DateOrDateTime, ImpactedService, Service};
+use crate::cta::alerts::{Alert, Service};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DBAlert {

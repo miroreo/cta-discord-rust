@@ -8,12 +8,11 @@ mod watcher;
 extern crate dotenv;
 
 use dotenv::dotenv;
-use env_logger::Logger;
 use serenity::all::{
-  CommandOptionType, CreateAutocompleteResponse, CreateInteractionResponse,
+  CreateAutocompleteResponse, CreateInteractionResponse,
   CreateInteractionResponseMessage, Interaction,
 };
-use sqlx::{migrate, Connection, PgConnection, Pool, Postgres};
+use sqlx::{migrate, Pool, Postgres};
 use std::env;
 use std::sync::Arc;
 
@@ -137,9 +136,7 @@ impl EventHandler for Handler {
         }
       }
     } else {
-      Some(CreateInteractionResponse::Autocomplete(
-        CreateAutocompleteResponse::new(),
-      ));
+      let _ = CreateAutocompleteResponse::new();
     }
   }
 }

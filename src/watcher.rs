@@ -1,19 +1,20 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use chrono::DateTime;
-use serenity::all::{ChannelId, Context, CreateMessage};
+use serenity::all::{ChannelId, Context, CreateEmbed, CreateEmbedAuthor, CreateMessage};
 use sqlx::{Executor, Postgres};
+use thiserror::Error;
 
 use crate::{
-  commands::alerts,
   cta::{
     self,
-    alerts::{Alert, AlertsError, AlertsOptions, DateOrDateTime},
+    alerts::{Alert, AlertsOptions},
   },
   db::{self, DBAlert},
   CTAShared,
 };
+
+static ALERTS_ICON_URL: &str = "https://www.transitchicago.com/assets/1/16/DimRiderToolDesktop/quick-link-4.png?14576";
 
 pub async fn watch(ctx: Context) {
   static INTERVAL_SECS: u64 = 10;
@@ -27,9 +28,9 @@ async fn check(ctx: Context) {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
   let alerts = cta::alerts::get_alerts(AlertsOptions {
-    route_ids: ["r", "blue", "grn", "org", "brn", "p", "pink", "y"]
+    route_ids: ["red", "blue", "g", "org", "brn", "p", "pink", "y"]
       .iter()
-      .map(|s| s.to_string())
+      .map(std::string::ToString::to_string)
       .collect(),
     active_only: Some(true),
     accessibility: Some(false),
@@ -40,25 +41,28 @@ async fn check(ctx: Context) {
   .await;
 
   match alerts {
-    Ok(list) => {
-      if !list.is_empty() {
-        println!("Found {} alerts!", list.len());
+    Ok(api_alerts) => {
+      if !api_alerts.is_empty() {
+        // let db_alerts = db::get_alerts_with_ids(&data.db, &list.iter().map(|f| f.id).collect::<Vec<_>>()).await;
+        // // println!("Found {} alerts!", list.len());
+        // for f in &list {
+        //   dbg!(f);
+        // }
 
-        let in_db =
-          db::get_alerts_with_ids(&data.db, &list.iter().map(|f| f.id).collect::<Vec<_>>()).await;
-        for f in &list {
-          dbg!(f);
-        }
-        match in_db {
-          Ok(val) => {
-            for alert in val {
-              match list.iter().find(|x| x.id == alert.alert_id) {
-                Some(a) => {
-                  // if should_update(a.clone(), alert)
-                }
-                None => {}
-              };
+        match db::get_alerts_with_ids(&data.db, &api_alerts.iter().map(|f| f.id).collect::<Vec<_>>()).await {
+          Ok(db_alerts) => {
+            let untracked_alerts = new_alerts(&db_alerts, &api_alerts);
+            let updated_alerts = alerts_should_update(&db_alerts, &api_alerts);            
+            if !untracked_alerts.is_empty() {
+              println!("{} untracked alerts found!", untracked_alerts.len());
             }
+            if !updated_alerts.is_empty() {
+              println!("{} updated alerts found!", updated_alerts.len());
+            }
+            for a in &untracked_alerts {
+              let _ = trigger(&ctx, a.clone()).await;
+            }
+
           }
           Err(e) => {
             println!("Error getting alerts in database: {e}");
@@ -73,32 +77,70 @@ async fn check(ctx: Context) {
 
   // dbg!(alerts.len());
 }
+fn new_alerts(db_alerts: &[DBAlert], current_alerts: &[Alert]) -> Vec<Alert> {
+  current_alerts.iter().filter(|a| !db_alerts.iter().any(|dba| a.id == dba.alert_id)).cloned().collect()
+}
 
-async fn find_new(ctx: &Context, alerts: Vec<Alert>) -> Result<Vec<Alert>, sqlx::Error> {
+fn alerts_should_update(db_alerts: &[DBAlert], current_alerts: &[Alert]) -> Vec<Alert> {
+  // if it's got the same ID, different headline or short_description, update
+  current_alerts.iter().filter(|a| {
+    db_alerts.iter().any(|dba| {
+      a.id == dba.alert_id &&
+      (!a.headline.eq(&dba.headline) || !a.short_description.eq(&dba.short_description))
+    })
+  }).cloned().collect()
+}
+// async fn find_new(ctx: &Context, alerts: Vec<Alert>) -> Result<Vec<Alert>, sqlx::Error> {
+//   let data = ctx.data.read().await;
+//   let data = data.get::<CTAShared>().expect("no shared data");
+//   let db_alerts =
+//     db::get_alerts_with_ids(
+//       &data.db,
+//       &alerts
+//         .iter()
+//         .map(|a| a.id)
+//         .collect::<Vec<_>>()).await?;
+//   Ok(
+//     alerts
+//       .iter()
+//       .filter(|a| !db_alerts.iter().any(|dba| a.id == dba.alert_id))
+//       .cloned()
+//       .collect(),
+//   )
+// }
+// fn compare
+
+#[derive(Error, Debug)]
+pub enum PublishError {
+  #[error("Failed to save alert to database.")]
+  DBError(#[from] sqlx::Error),
+  #[error("Failed to publish alert to Discord.")]
+  DiscordError(#[from] serenity::Error),
+  #[error("No Channel Set")]
+  NoChannelError
+}
+
+async fn trigger(ctx: &Context, alert: Alert) -> Result<(), PublishError> {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
-  let db_alerts =
-    db::get_alerts_with_ids(&data.db, &alerts.iter().map(|a| a.id).collect::<Vec<_>>()).await?;
-  Ok(
-    alerts
-      .iter()
-      .filter(|a| !db_alerts.iter().any(|dba| a.id == dba.alert_id))
-      .cloned()
-      .collect(),
-  )
-}
-// fn compare
-fn should_update(api_alert: Alert, db_alert: DBAlert) -> bool {
-  if api_alert.id != db_alert.alert_id {
-    return false;
-  }
-  if api_alert.headline != db_alert.headline {
-    return true;
-  }
-  if api_alert.short_description != db_alert.short_description {
-    return true;
-  }
-  false
+  let mut publish_count = 0;
+  // send alerts via discord
+  for guild in &db::get_subscribed_guilds(&data.db).await? {
+    if let Some(chan_id) = guild.alert_channel {
+      if ChannelId::from(chan_id as u64)
+        .send_message(&ctx.http, 
+          CreateMessage::new().add_embed(CreateEmbed::new()
+            .author(CreateEmbedAuthor::new("CTA Alerts").icon_url(ALERTS_ICON_URL))
+            .title(&alert.headline)
+            .description(&alert.short_description))).await.is_ok() {
+        publish_count += 1;
+      };
+    }
+  };
+  // save alert to database
+  let _ = db::add_alert(&data.db, alert, &publish_count).await;
+
+  Ok(())
 }
 async fn send_alert(ctx: Context, db: impl Executor<'_, Database = Postgres>, msg: String) {
   let guilds = match db::get_subscribed_guilds(db).await {
