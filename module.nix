@@ -9,7 +9,7 @@
 in {
   options.services.cta-discord = {
     enable = mkEnableOption "cta-discord";
-    package = mkPackageOption pkgs "cta-discord";
+    package = mkPackageOption pkgs "cta-discord" {};
 
     db-url = mkOption {
       type = types.str;
