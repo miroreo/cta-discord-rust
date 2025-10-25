@@ -1,7 +1,8 @@
 use std::thread::sleep;
 use std::time::Duration;
 
-use serenity::all::{ChannelId, Context, CreateEmbed, CreateEmbedAuthor, CreateMessage};
+use chrono::NaiveTime;
+use serenity::all::{ChannelId, Context, CreateEmbed, CreateEmbedAuthor, CreateMessage, Timestamp};
 use sqlx::{Executor, Postgres};
 use thiserror::Error;
 
@@ -134,6 +135,20 @@ async fn trigger(ctx: &Context, alert: Alert) -> Result<(), PublishError> {
   let data = ctx.data.read().await;
   let data = data.get::<CTAShared>().expect("no shared data");
   let mut publish_count = 0;
+  let start_time: i64 = match alert.event_start {
+    cta::alerts::DateOrDateTime::DateTime(naive_date_time) => naive_date_time
+      .and_local_timezone(chrono_tz::America::Chicago)
+      .earliest()
+      .unwrap()
+      .timestamp(),
+    cta::alerts::DateOrDateTime::Date(naive_date) => naive_date
+      .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+      .and_local_timezone(chrono_tz::America::Chicago)
+      .earliest()
+      .unwrap()
+      .timestamp(),
+  };
+
   // send alerts via discord
   for guild in &db::get_subscribed_guilds(&data.db).await? {
     if let Some(chan_id) = guild.alert_channel {
@@ -142,7 +157,8 @@ async fn trigger(ctx: &Context, alert: Alert) -> Result<(), PublishError> {
           CreateMessage::new().add_embed(CreateEmbed::new()
             .author(CreateEmbedAuthor::new("CTA Alerts").icon_url(ALERTS_ICON_URL))
             .title(&alert.headline)
-            .description(&alert.short_description))).await.is_ok() {
+            .description(&alert.short_description)
+            .timestamp(Timestamp::from_unix_timestamp(start_time).unwrap()))).await.is_ok() {
         publish_count += 1;
       };
     }
