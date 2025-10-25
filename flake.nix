@@ -30,7 +30,7 @@
 
       flake = {system, ...}: rec {
         overlays.default = final: prev: {
-          cta-discord-rust = self.packages."${final.system}".default;
+          cta-discord = self.packages."${final.system}".default;
         };
         nixosModules.default = import ./module.nix;
       };
