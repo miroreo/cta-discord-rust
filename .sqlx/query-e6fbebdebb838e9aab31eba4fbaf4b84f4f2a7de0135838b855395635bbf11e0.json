@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM current_alerts\n            WHERE NOT alert_id = ANY($1);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e6fbebdebb838e9aab31eba4fbaf4b84f4f2a7de0135838b855395635bbf11e0"
+}

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
 use sqlx::types::Json;
 use sqlx::{Executor, Postgres};
 
@@ -64,6 +65,19 @@ pub async fn get_alerts_with_ids(
             headline, short_description, full_description, severity_score, severity_color, impact, tbd, major_alert, alert_url, alert_id, published_to
             FROM current_alerts 
             WHERE alert_id = ANY($1);",
+        &ids
+    )
+    .fetch_all(db)
+    .await
+}
+pub async fn drop_alerts_not_with_ids(
+  db: impl Executor<'_, Database = Postgres>,
+  ids: &[i32],
+) -> Result<Vec<PgRow>, sqlx::Error> {
+  sqlx::query_as!(
+        DBAlert,
+        "DELETE FROM current_alerts
+            WHERE NOT alert_id = ANY($1);",
         &ids
     )
     .fetch_all(db)

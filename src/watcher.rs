@@ -68,6 +68,16 @@ async fn check(ctx: Context) {
             println!("Error getting alerts in database: {e}");
           }
         }
+        match db::drop_alerts_not_with_ids(&data.db, &api_alerts.iter().map(|f| f.id).collect::<Vec<_>>()).await {
+          Ok(rows) => {
+            if rows.len() != 0 {
+              println!("Dropped {} outdated alerts from the database", rows.len());
+            }
+          }
+          Err(e) => {
+            println!("Error dropping alerts: {e}");
+          }
+        }
       }
     }
     Err(e) => {
