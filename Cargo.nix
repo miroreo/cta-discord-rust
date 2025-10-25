@@ -1700,7 +1700,7 @@ rec {
           {
             name = "sqlx";
             packageId = "sqlx";
-            features = [ "runtime-tokio" "postgres" "sqlx-macros" ];
+            features = [ "runtime-tokio" "postgres" "sqlx-macros" "json" ];
           }
           {
             name = "svg";
