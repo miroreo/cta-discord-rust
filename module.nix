@@ -5,6 +5,7 @@
   ...
 }: let
   default_db_url = "postgres://localhost/cta-discord?host=/run/postgresql";
+  path2derivation = path: pkgs.runCommand (builtins.toString path) {} ''cp -r ${path} $out'';
   inherit (lib) mkEnableOption mkPackageOption mkIf mkOption types optionalAttrs;
 in {
   options.services.cta-discord = {
@@ -16,6 +17,14 @@ in {
       default = default_db_url;
       description = ''
         URL of CTA Discord's database.
+      '';
+    };
+
+    assetsDir = mkOption {
+      type = types.str;
+      default = builtins.toString (path2derivation ./assets);
+      description = ''
+        The directory where the CTA Bot reads its assets.
       '';
     };
 
@@ -61,6 +70,7 @@ in {
         environment = {
           DATABASE_URL = "${cfg.db-url}";
           DEVELOPMENT = mkIf (cfg.development) "1";
+          ASSETS_DIR = "${cfg.assetsDir}";
         };
 
         serviceConfig = {

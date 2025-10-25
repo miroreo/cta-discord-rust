@@ -221,19 +221,25 @@ pub enum ArrivalDisplayError {
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn render_doc(doc: &svg::Document) -> Result<Vec<u8>, ArrivalDisplayError> {
   let mut font_database = fontdb::Database::new();
-  match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica.ttf") {
+  let assets = match std::env::var("ASSETS_DIR") {
+    Ok(val) => {val}
+    Err(e) => {
+      "./assets/".to_string()
+    }
+  };
+  match font_database.load_font_file(format!("{assets}/ttf/Helvetica.ttf")) {
     Ok(()) => {}
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));
     }
   }
-  match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica-Bold.ttf") {
+  match font_database.load_font_file(format!("{assets}/ttf/Helvetica-Bold.ttf")) {
     Ok(()) => {}
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));
     }
   }
-  match font_database.load_font_file("./src/arrivaldisplay/ttf/Helvetica-Light.ttf") {
+  match font_database.load_font_file(format!("{assets}/ttf/Helvetica-Light.ttf")) {
     Ok(()) => {}
     Err(e) => {
       return Err(ArrivalDisplayError::FileError(e));

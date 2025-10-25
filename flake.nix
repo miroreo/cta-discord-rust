@@ -42,9 +42,25 @@
         inputs',
         ...
       }: let
+        customBuildRustCrateForPkgs = pkgs: pkgs.buildRustCrate.override {
+          defaultCrateOverrides = pkgs.defaultCrateOverrides // {
+            addAssets = {
+              postInstall = ''
+                mkdir -p $out/assets/
+                cp ./assets $out/assets
+              '';
+            };
+            # funky-things = attrs: {
+            #   buildInputs = [ pkgs.openssl ];
+            # };
+          };
+        };
         # If you dislike IFD, you can also generate it with `crate2nix generate`
         # on each dependency change and import it here with `import ./Cargo.nix`.
-        cargoNix = import ./Cargo.nix {pkgs = pkgs;};
+        cargoNix = pkgs.callPackage ./Cargo.nix {
+          # pkgs = pkgs;
+          buildRustCrateForPkgs = customBuildRustCrateForPkgs;
+        };
       in rec {
         checks = {
           rustnix = cargoNix.rootCrate.build.override {
@@ -57,7 +73,6 @@
           default = packages.rustnix;
 
           inherit (pkgs) rust-toolchain;
-
           rust-toolchain-versions = pkgs.writeScriptBin "rust-toolchain-versions" ''
             ${pkgs.rust-toolchain}/bin/cargo --version
             ${pkgs.rust-toolchain}/bin/rustc --version
@@ -68,6 +83,7 @@
   in
     perSystem
     // {
+      
       hydraJobs.default."x86_64-linux" = perSystem.packages.x86_64-linux.default;
     };
 }
