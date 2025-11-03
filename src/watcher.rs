@@ -57,9 +57,9 @@ async fn check(ctx: Context) {
             if !untracked_alerts.is_empty() {
               println!("{} untracked alerts found!", untracked_alerts.len());
             }
-            if !updated_alerts.is_empty() {
-              println!("{} updated alerts found!", updated_alerts.len());
-            }
+            // if !updated_alerts.is_empty() {
+            //   println!("{} updated alerts found!", updated_alerts.len());
+            // }
             for a in &untracked_alerts {
               let _ = trigger(&ctx, a.clone()).await;
             }
@@ -69,16 +69,17 @@ async fn check(ctx: Context) {
             println!("Error getting alerts in database: {e}");
           }
         }
-        match db::drop_alerts_not_with_ids(&data.db, &api_alerts.iter().map(|f| f.id).collect::<Vec<_>>()).await {
-          Ok(rows) => {
-            if rows.len() != 0 {
-              println!("Dropped {} outdated alerts from the database", rows.len());
-            }
-          }
-          Err(e) => {
-            println!("Error dropping alerts: {e}");
-          }
-        }
+        // This function is likely causing a lot of duplicate messages
+        // match db::drop_alerts_not_with_ids(&data.db, &api_alerts.iter().map(|f| f.id).collect::<Vec<_>>()).await {
+        //   Ok(rows) => {
+        //     if rows.len() != 0 {
+        //       println!("Dropped {} outdated alerts from the database", rows.len());
+        //     }
+        //   }
+        //   Err(e) => {
+        //     println!("Error dropping alerts: {e}");
+        //   }
+        // }
       }
     }
     Err(e) => {
