@@ -302,3 +302,11 @@ fn test_tablockid_to_garage() {
     Garage::Garage77th
   );
 }
+
+#[test]
+fn test_garage_to_string() {
+  assert_eq!(
+    String::from(Garage::Chicago.into()),
+    String::from("Chicago Garage")
+  )
+}

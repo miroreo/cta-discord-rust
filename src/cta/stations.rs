@@ -25,7 +25,6 @@ struct Stop {
   g: bool,
   brn: bool,
   p: bool,
-  pexp: bool,
   y: bool,
   pnk: bool,
   o: bool,

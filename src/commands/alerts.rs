@@ -93,6 +93,7 @@ pub fn register() -> CreateCommand {
     .description("Gets current CTA Rail Service Alerts")
     .add_integration_type(serenity::all::InstallationContext::User)
     .add_integration_type(serenity::all::InstallationContext::Guild)
+    .contexts(vec![serenity::all::InteractionContext::Guild, serenity::all::InteractionContext::BotDm, serenity::all::InteractionContext::PrivateChannel])
 }
 
 async fn get_alerts(ctx: &Context) -> Result<Vec<cta::alerts::Alert>, AlertsError> {

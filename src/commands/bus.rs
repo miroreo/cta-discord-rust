@@ -304,4 +304,7 @@ pub fn register() -> CreateCommand {
     )
     .add_integration_type(serenity::all::InstallationContext::User)
     .add_integration_type(serenity::all::InstallationContext::Guild)
+    .add_context(serenity::all::InteractionContext::Guild)
+    .add_context(serenity::all::InteractionContext::BotDm)
+    .add_context(serenity::all::InteractionContext::PrivateChannel)
 }

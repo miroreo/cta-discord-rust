@@ -81,6 +81,11 @@ async fn arrivals_command(ctx: &Context, search: &str) -> CreateInteractionRespo
       .gtfs_data
       .get_stop(stop_id.as_str())
       .expect("Search result is invalid.");
+    if stop.clone().name.unwrap_or_default().eq(search) {
+      stations = Vec::new();
+      stations.push(stop.clone());
+      break;
+    }
     // stop IDs over 40000 are train stations.
     let id = str::parse::<i32>(&stop.id).expect("Couldn't parse Stop ID as i32.");
     if !(40000..=50000).contains(&id) {
@@ -227,5 +232,8 @@ pub fn register() -> CreateCommand {
     .add_option(station_name)
     .add_integration_type(serenity::all::InstallationContext::Guild)
     .add_integration_type(serenity::all::InstallationContext::User)
+    .add_context(serenity::all::InteractionContext::Guild)
+    .add_context(serenity::all::InteractionContext::BotDm)
+    .add_context(serenity::all::InteractionContext::PrivateChannel)
     .description("Gets arrival information for a given station")
 }
